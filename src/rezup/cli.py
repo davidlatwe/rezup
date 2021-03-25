@@ -42,10 +42,21 @@ def rez_env(container_path):
 
 
 def get_prompt():
-    return {
-        # CMD
-        "PROMPT": "(rez) $P$G",
-    }
+    if sys.platform == "win32":
+        return {
+            "PROMPT": "(rez) $P$G",  # CMD
+        }
+    else:
+        return {
+            # "PS1": "??"
+        }
+
+
+def get_shell():
+    if sys.platform == "win32":
+        return ["cmd", "/Q", "/K"]
+    else:
+        return ["bash"]
 
 
 def run():
@@ -129,7 +140,7 @@ def use(container, job=None):
 
     env = rez_env(container_path)
     env.update(get_prompt())
-    popen = subprocess.Popen(["cmd", "/Q", "/K"], env=env)
+    popen = subprocess.Popen(get_shell(), env=env)
     stdout, stderr = popen.communicate()
 
     sys.exit(popen.returncode)
