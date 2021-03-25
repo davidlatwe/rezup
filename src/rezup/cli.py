@@ -90,7 +90,33 @@ def create_rez_production_scripts(target_dir):
     for ep in entrypoints.get_group_all("console_scripts", path=[DEFAULT_REZ]):
         specifications.append("%s = %s:%s" % (ep.name, ep.module_name, ep.object_name))
 
-    SCRIPT_TEMPLATE = r'''# -*- coding: utf-8 -*-
+    maker = ScriptMaker(source_dir=None, target_dir=target_dir)
+    maker.script_template = SCRIPT_TEMPLATE
+    maker.executable = "/usr/bin/env python"  # to be portable
+
+    # Align with wheel
+    #
+    # Ensure we don't generate any variants for scripts because this is almost
+    # never what somebody wants.
+    # See https://bitbucket.org/pypa/distlib/issue/35/
+    maker.variants = {""}
+    # Ensure old scripts are overwritten.
+    # See https://github.com/pypa/pip/issues/1800
+    maker.clobber = True
+    # This is required because otherwise distlib creates scripts that are not
+    # executable.
+    # See https://bitbucket.org/pypa/distlib/issue/32/
+    maker.set_mode = True
+
+    scripts = maker.make_multiple(
+        specifications=specifications,
+        options=dict(interpreter_args=["-E"])
+    )
+
+    return scripts
+
+
+SCRIPT_TEMPLATE = r'''# -*- coding: utf-8 -*-
 import re
 import os
 import sys
@@ -101,11 +127,3 @@ if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
     sys.exit(%(func)s())
 '''
-    maker = ScriptMaker(source_dir=None, target_dir=target_dir)
-    maker.script_template = SCRIPT_TEMPLATE
-    maker.executable = sys.executable
-    scripts = maker.make_multiple(
-        specifications=specifications,
-        options=dict(interpreter_args=["-E"])
-    )
-    return scripts
