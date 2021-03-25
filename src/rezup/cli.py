@@ -157,8 +157,16 @@ def install(container):
     print("Installing container..")
     subprocess.check_output(cmd + ["--target", container_path])
 
+    bin_path = os.path.join(container_path, "bin")
     # re-make entry_points
-    create_rez_production_scripts(container_path)
+    create_rez_production_scripts(container_path, bin_path)
+
+    version_py = os.path.join(container_path, "rez", "utils", "_version.py")
+    validation_file = os.path.join(bin_path, ".rez_production_install")
+    _rez_version = ""
+    exec(open(version_py).read())
+    with open(validation_file, "w") as vfn:
+        vfn.write(_rez_version)
 
 
 def is_rez_repo():
@@ -168,7 +176,7 @@ def is_rez_repo():
     return os.path.isfile(setup_py) and os.path.isdir(rez_src)
 
 
-def create_rez_production_scripts(container_path):
+def create_rez_production_scripts(container_path, bin_path):
     """Create Rez production used binary scripts
 
     The binary script will be executed with Python interpreter flag -E, which
@@ -190,9 +198,7 @@ def create_rez_production_scripts(container_path):
             "%s = %s:%s" % (ep.name, ep.module_name, ep.object_name)
         )
 
-    target_dir = os.path.join(container_path, "bin")
-
-    maker = ScriptMaker(source_dir=None, target_dir=target_dir)
+    maker = ScriptMaker(source_dir=None, target_dir=bin_path)
     maker.script_template = SCRIPT_TEMPLATE
     maker.executable = "/usr/bin/env python"  # to be portable
 
