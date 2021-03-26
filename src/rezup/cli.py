@@ -10,7 +10,7 @@ REZUP_ROOT = os.path.join(os.path.dirname(sys.executable), "rez")
 
 
 class PathList(object):
-    def __init__(self, paths):
+    def __init__(self, *paths):
         self.list = [
             os.path.normpath(os.path.normcase(p))
             for p in paths
@@ -23,12 +23,12 @@ class PathList(object):
 
 def rez_env(container_path):
     sep = os.pathsep
-    blocked = PathList([
-        # exclude all python ?
-        os.path.normpath(os.path.dirname(sys.executable)),
+    blocked = PathList(
         # rezup
         os.path.dirname(sys.argv[0]),
-    ])
+        # exclude all pythons
+        *find_pythons()
+    )
 
     env = os.environ.copy()
     env["PATH"] = sep.join([
@@ -220,7 +220,7 @@ def create_rez_production_scripts(container_path, bin_path):
 
     maker = ScriptMaker(source_dir=None, target_dir=bin_path)
     maker.script_template = SCRIPT_TEMPLATE
-    maker.executable = "/usr/bin/env python"  # to be portable
+    maker.executable = sys.executable
 
     # Align with wheel
     #
@@ -255,3 +255,13 @@ if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
     sys.exit(%(func)s())
 '''
+
+
+def find_pythons():
+    ext = ".exe" if sys.platform == "win32" else ""
+
+    for path in os.environ["PATH"].split(os.pathsep):
+        python_exe = os.path.join(path, "python" + ext)
+
+        if os.access(python_exe, os.X_OK):
+            yield path
