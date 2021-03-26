@@ -165,8 +165,13 @@ def install(container):
     else:
         cmd.append("rez")  # from pypi
 
+    # don't make noise
+    cmd.append("--disable-pip-version-check")
+
+    cmd += ["--target", container_path]
+
     print("Installing container..")
-    subprocess.check_output(cmd + ["--target", container_path])
+    subprocess.check_output(cmd)
 
     bin_path = os.path.join(container_path, "bin")
     # re-make entry_points
