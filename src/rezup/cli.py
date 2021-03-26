@@ -1,13 +1,14 @@
 
 import os
 import sys
+import site
 import shutil
 import pkgutil
 import argparse
 import subprocess
 
 # root dir for storing multi-rez and rezup preferences
-REZUP_ROOT = os.path.join(os.path.dirname(sys.executable), "rez")
+REZUP_ROOT = os.path.join(site.getuserbase(), "rez")
 
 
 class PathList(object):
