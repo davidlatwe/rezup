@@ -1,6 +1,6 @@
 # rezup
 
-Rez launching environment manager
+[Rez](https://github.com/nerdvegas/rez) launching environment manager
 
 ### Usage
 
