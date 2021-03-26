@@ -2,6 +2,12 @@
 
 [Rez](https://github.com/nerdvegas/rez) launching environment manager
 
+### Install
+
+```
+pip install rezup
+```
+
 ### Usage
 
 use default, if container default not exists, get rez from pypi
