@@ -24,7 +24,7 @@ setup(
     entry_points={
         "console_scripts": ["rezup = rezup.cli:run"],
     },
-    requires=[
+    install_requires=[
         "distlib",
         "entrypoints",
     ],
