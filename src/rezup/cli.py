@@ -29,6 +29,9 @@ def rez_env(container_path):
         # rezup
         os.path.dirname(sys.argv[0]),
         # exclude all pythons
+        #   this will not exclude /usr/bin/python, but if that is needed,
+        #   maybe this would help ?
+        #   https://stackoverflow.com/a/31099615/14054728
         *find_pythons()
     )
 
@@ -279,6 +282,7 @@ def find_pythons():
 
     for path in os.environ["PATH"].split(os.pathsep):
         python_exe = os.path.join(path, "python" + ext)
-
+        if path == "/usr/bin":
+            continue
         if os.access(python_exe, os.X_OK):
             yield path
