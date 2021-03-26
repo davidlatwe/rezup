@@ -180,7 +180,8 @@ def install(container):
     version_py = os.path.join(container_path, "rez", "utils", "_version.py")
     validation_file = os.path.join(bin_path, ".rez_production_install")
     _rez_version = ""
-    exec(open(version_py).read())
+    with open(version_py) as f:
+        exec(f.read())
     with open(validation_file, "w") as vfn:
         vfn.write(_rez_version)
 
