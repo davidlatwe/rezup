@@ -11,17 +11,12 @@ $ rezup
 
 use foo
 ```
-$ rezup --use foo
+$ rezup use foo
 ```
 
 use foo and do job
 ```
-$ rezup --use foo --do job
-```
-
-use default to do job
-```
-$ rezup --do job
+$ rezup use foo --do job
 ```
 
 install rez into container default
@@ -31,17 +26,17 @@ $ rezup add
 
 install rez into container foo
 ```
-$ rezup add --name foo
+$ rezup add foo
 ```
 
 install rez into container live, which will be in edit mode
 ```
-$ rezup add --name live
+$ rezup add live
 ```
 
 remove container foo
 ```
-$ rezup drop --name foo
+$ rezup drop foo
 ```
 
 list containers
