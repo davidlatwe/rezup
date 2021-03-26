@@ -60,33 +60,36 @@ def get_shell():
 
 
 def run():
+    # TODO: add --version flag
     parser = argparse.ArgumentParser("rezup")
-
-    parser.add_argument("-u", "--use", default=None)
-    parser.add_argument("-d", "--do", default=None)
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
+    parser_use = subparsers.add_parser("use", help="use rez container")
+    parser_use.add_argument("name", help="container name")
+    parser_use.add_argument("-d", "--do")
+
     parser_add = subparsers.add_parser("add", help="add rez container")
-    parser_add.add_argument("name", const="default", nargs="?")
+    parser_add.add_argument("name", help="container name")
     parser_add.add_argument("-f", "--force", action="store_true")
 
     parser_drop = subparsers.add_parser("drop", help="remove rez container")
-    parser_drop.add_argument("name")
+    parser_drop.add_argument("name", help="container name")
 
     parser_list = subparsers.add_parser("list", help="list rez containers")
 
+    # for fast access
+    if len(sys.argv) == 1:
+        sys.argv += ["use", "default"]
+
     opts = parser.parse_args()
 
-    if opts.use or opts.do or not opts.cmd:
-        if opts.cmd:
-            parser.error("Cannot run '%s' with '--use' or '--do'" % opts.cmd)
-
-        container = opts.use or "default"
+    if opts.cmd == "use":
+        container = opts.name
         use(container, job=opts.do)
 
     elif opts.cmd == "add":
-        container = opts.name or "default"
+        container = opts.name
         add(container, force=opts.force)
 
     elif opts.cmd == "drop":
