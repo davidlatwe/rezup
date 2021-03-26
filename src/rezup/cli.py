@@ -2,6 +2,7 @@
 import os
 import sys
 import shutil
+import pkgutil
 import argparse
 import subprocess
 
@@ -176,16 +177,39 @@ def install(container):
     print("Installing container..")
     subprocess.check_output(cmd)
 
-    bin_path = os.path.join(container_path, "bin")
-    # re-make entry_points
-    create_rez_production_scripts(container_path, bin_path)
+    post_install(container_path)
 
+
+def post_install(container_path):
+    bin_path = os.path.join(container_path, "bin")
+    rez_cli = os.path.join(container_path, "rez", "cli")
     version_py = os.path.join(container_path, "rez", "utils", "_version.py")
-    validation_file = os.path.join(bin_path, ".rez_production_install")
+
+    rez_entries = None
+    for importer, modname, _ in pkgutil.iter_modules([rez_cli]):
+        print(modname)
+        if modname == "_entry_points":
+            rez_entries = importer.find_module(modname).load_module(modname)
+            break
+
+    if rez_entries is not None:
+        specifications = rez_entries.get_specifications().values()
+        create_rez_production_scripts(specifications, bin_path)
+    else:
+        print("Rez entry points not found, cannot make scripts.")
+
     _rez_version = ""
-    with open(version_py) as f:
-        exec(f.read())
-    with open(validation_file, "w") as vfn:
+    if os.path.isfile(version_py):
+        with open(version_py) as f:
+            exec(f.read())  # load attribute _rez_version
+    else:
+        print("Rez version file not found.")
+
+    if not _rez_version:
+        print("Rez version not acquired, installation incomplete.")
+        return
+
+    with open(os.path.join(bin_path, ".rez_production_install"), "w") as vfn:
         vfn.write(_rez_version)
 
 
@@ -196,7 +220,7 @@ def is_rez_repo():
     return os.path.isfile(setup_py) and os.path.isdir(rez_src)
 
 
-def create_rez_production_scripts(container_path, bin_path):
+def create_rez_production_scripts(specifications, bin_path):
     """Create Rez production used binary scripts
 
     The binary script will be executed with Python interpreter flag -E, which
@@ -209,14 +233,6 @@ def create_rez_production_scripts(container_path, bin_path):
 
     """
     from distlib.scripts import ScriptMaker
-    import entrypoints
-
-    specifications = []
-    for ep in entrypoints.get_group_all("console_scripts",
-                                        path=[container_path]):
-        specifications.append(
-            "%s = %s:%s" % (ep.name, ep.module_name, ep.object_name)
-        )
 
     maker = ScriptMaker(source_dir=None, target_dir=bin_path)
     maker.script_template = SCRIPT_TEMPLATE

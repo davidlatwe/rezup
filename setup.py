@@ -26,7 +26,6 @@ setup(
     },
     install_requires=[
         "distlib",
-        "entrypoints",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
