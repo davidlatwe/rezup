@@ -133,11 +133,22 @@ def add(container, force=False):
 def drop(container):
     container_path = os.path.join(REZUP_ROOT, container)
 
-    print("Removing existing container..")
-    shutil.rmtree(container_path)
+    if os.path.isdir(container_path):
+        print("Removing existing container..")
+        shutil.rmtree(container_path)
+    else:
+        print("Container '%s' not exists." % container)
+
+    # keep tidy
+    if not os.listdir(REZUP_ROOT):
+        shutil.rmtree(REZUP_ROOT)
 
 
 def inventory():
+    if not os.path.isdir(REZUP_ROOT):
+        print("No container.")
+        return
+
     for name in os.listdir(REZUP_ROOT):
         print(name)
 
