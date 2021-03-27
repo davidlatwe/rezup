@@ -191,7 +191,6 @@ def post_install(container_path):
 
     rez_entries = None
     for importer, modname, _ in pkgutil.iter_modules([rez_cli]):
-        print(modname)
         if modname == "_entry_points":
             rez_entries = importer.find_module(modname).load_module(modname)
             break
