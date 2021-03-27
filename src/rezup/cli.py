@@ -72,7 +72,7 @@ def run():
 
     parser_use = subparsers.add_parser("use", help="use rez container")
     parser_use.add_argument("name", help="container name")
-    parser_use.add_argument("-d", "--do")
+    parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
 
     parser_add = subparsers.add_parser("add", help="add rez container")
     parser_add.add_argument("name", help="container name")
