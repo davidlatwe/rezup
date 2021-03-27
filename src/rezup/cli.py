@@ -91,31 +91,31 @@ def run():
 
     if opts.cmd == "use":
         container = opts.name
-        use(container, job=opts.do)
+        cmd_use(container, job=opts.do)
 
     elif opts.cmd == "add":
         container = opts.name
-        add(container, force=opts.force)
+        cmd_add(container, force=opts.force)
 
     elif opts.cmd == "drop":
         container = opts.name
-        drop(container)
+        cmd_drop(container)
 
     elif opts.cmd == "list":
-        inventory()
+        cmd_inventory()
 
 
-def use(container, job=None):
+def cmd_use(container, job=None):
     container_path = os.path.join(REZUP_ROOT, container)
 
     if not os.path.isdir(container_path):
-        if container != "default":
-            print("Container '%s' not exists." % container)
-            sys.exit(1)
+        if container == "default":
+            # for first time quick start
+            install(container_path)
 
         else:
-            # for first time quick start
-            add("default")
+            print("Container '%s' not exists." % container)
+            sys.exit(1)
 
     env = rez_env(container_path)
     env.update(get_prompt())
@@ -125,25 +125,27 @@ def use(container, job=None):
     sys.exit(popen.returncode)
 
 
-def add(container, force=False):
+def cmd_add(container, force=False):
     container_path = os.path.join(REZUP_ROOT, container)
+    edit_mode = container == "live"
 
     if os.path.isdir(container_path):
-        if not force:
+        if force:
+            print("Force remove container '%s'.." % container)
+            remove(container_path)
+        else:
             print("Container '%s' already exists." % container)
             sys.exit(1)
 
-        drop(container)
-
-    install(container)
+    install(container_path, edit_mode=edit_mode)
 
 
-def drop(container):
+def cmd_drop(container):
     container_path = os.path.join(REZUP_ROOT, container)
 
     if os.path.isdir(container_path):
-        print("Removing existing container..")
-        shutil.rmtree(container_path)
+        print("Removing existing container '%s'.." % container)
+        remove(container_path)
     else:
         print("Container '%s' not exists." % container)
 
@@ -152,7 +154,7 @@ def drop(container):
         shutil.rmtree(REZUP_ROOT)
 
 
-def inventory():
+def cmd_inventory():
     if not os.path.isdir(REZUP_ROOT):
         print("No container.")
         return
@@ -161,13 +163,19 @@ def inventory():
         print(name)
 
 
-def install(container):
-    container_path = os.path.join(REZUP_ROOT, container)
+# helpers
+
+def remove(container_path):
+    print("Deleting %s" % container_path)
+    shutil.rmtree(container_path)
+
+
+def install(container_path, edit_mode=False):
 
     cmd = ["pip", "install"]
 
     if is_rez_repo():
-        if container == "live":
+        if edit_mode:
             cmd.append("-e")
         cmd.append(".")
     else:
