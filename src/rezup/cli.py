@@ -3,12 +3,37 @@ import os
 import sys
 import site
 import shutil
+import dotenv
 import pkgutil
 import argparse
 import subprocess
 
 # root dir for storing multi-rez and rezup preferences
 REZUP_ROOT = os.path.join(site.getuserbase(), "rez")
+
+
+def iter_dotenv(paths=None):
+    paths = paths or [os.path.expanduser("~/rezup.env")]
+    for path in paths:
+        if not os.path.isfile(path):
+            continue
+        env = dotenv.dotenv_values(path)
+        yield path, env
+
+        if "REZUP_DOTENV" in env:
+            _paths = env["REZUP_DOTENV"].split(os.pathsep)
+            for _path, _env in iter_dotenv(paths=_paths):
+                yield _path, _env
+
+
+def load_env():
+    environ = os.environ.copy()
+    env_stack = list()
+    for path, env in iter_dotenv():
+        env_stack.append((path, env))
+        environ.update(env)
+
+    return env_stack, environ
 
 
 class PathList(object):

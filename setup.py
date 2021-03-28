@@ -26,6 +26,7 @@ setup(
     },
     install_requires=[
         "distlib",
+        "python-dotenv",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
