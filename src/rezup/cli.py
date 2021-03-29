@@ -201,19 +201,14 @@ def post_install(container_path):
     else:
         print("Rez entry points not found, cannot make scripts.")
 
-    _rez_version = ""
     if os.path.isfile(version_py):
+        _locals = {"_rez_version": ""}
         with open(version_py) as f:
-            exec(f.read())  # load attribute _rez_version
+            exec(f.read(), globals(), _locals)
+        with open(os.path.join(bin_path, ".rez_production_install"), "w") as f:
+            f.write(_locals["_rez_version"])
     else:
-        print("Rez version file not found.")
-
-    if not _rez_version:
-        print("Rez version not acquired, installation incomplete.")
-        return
-
-    with open(os.path.join(bin_path, ".rez_production_install"), "w") as vfn:
-        vfn.write(_rez_version)
+        print("Rez version file not found, install incomplete.")
 
 
 def is_rez_repo():
