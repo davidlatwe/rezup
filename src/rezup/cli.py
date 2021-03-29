@@ -148,7 +148,7 @@ def drop(container):
         print("Container '%s' not exists." % container)
 
     # keep tidy
-    if not os.listdir(REZUP_ROOT):
+    if os.path.isdir(REZUP_ROOT) and not os.listdir(REZUP_ROOT):
         shutil.rmtree(REZUP_ROOT)
 
 
