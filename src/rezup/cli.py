@@ -85,7 +85,7 @@ def run():
 
     # for fast access
     if len(sys.argv) == 1:
-        sys.argv += ["use", "default"]
+        sys.argv += ["use", "latest"]
 
     opts = parser.parse_args()
 
@@ -106,6 +106,10 @@ def run():
 
 
 def cmd_use(container, job=None):
+    if container == "latest":
+        # check update
+        pass
+
     container_path = os.path.join(REZUP_ROOT, container)
 
     if not os.path.isdir(container_path):
