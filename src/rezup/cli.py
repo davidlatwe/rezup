@@ -41,7 +41,7 @@ def rez_env(container_path):
     ] + [
         os.path.join(container_path, "bin")
     ])
-    env["REZUP_PYTHONPATH"] = container_path
+    env["REZUP_SITEPACKAGES"] = container_path
 
     return env
 
@@ -119,6 +119,7 @@ def cmd_use(container, job=None):
 
     env = rez_env(container_path)
     env.update(get_prompt())
+    # TODO: Pass keyboard interrupt
     popen = subprocess.Popen(get_shell(), env=env)
     stdout, stderr = popen.communicate()
 
@@ -189,10 +190,10 @@ def install(container_path, edit_mode=False):
     print("Installing container..")
     subprocess.check_output(cmd)
 
-    post_install(container_path)
+    setup_rez(container_path)
 
 
-def post_install(container_path):
+def setup_rez(container_path):
     bin_path = os.path.join(container_path, "bin")
     rez_cli = os.path.join(container_path, "rez", "cli")
     version_py = os.path.join(container_path, "rez", "utils", "_version.py")
@@ -232,11 +233,6 @@ def create_rez_production_scripts(specifications, bin_path):
     The binary script will be executed with Python interpreter flag -E, which
     will ignore all PYTHON* env vars, e.g. PYTHONPATH and PYTHONHOME.
 
-    But for case like installing rez with `pip install rez --target <dst>`,
-    which may install rez packages into a custom location that cannot be
-    seen by Python unless setting PYTHONPATH, use REZUP_PYTHONPATH to
-    expose <dst>, it will be appended into sys.path before execute.
-
     """
     from distlib.scripts import ScriptMaker
 
@@ -270,8 +266,20 @@ SCRIPT_TEMPLATE = r'''# -*- coding: utf-8 -*-
 import re
 import os
 import sys
-if "REZUP_PYTHONPATH" in os.environ:
-    sys.path.append(os.environ["REZUP_PYTHONPATH"])
+import site
+
+site_pkgs = site.getsitepackages()
+user_pkgs = site.getusersitepackages()
+
+sys.path = [
+    path
+    for path in sys.path
+    if path not in site_pkgs
+    and path not in user_pkgs
+]
+
+site.addsitedir(os.environ["REZUP_SITEPACKAGES"])
+
 from %(module)s import %(import_name)s
 if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
