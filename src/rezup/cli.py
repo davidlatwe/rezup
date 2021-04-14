@@ -10,6 +10,8 @@ import subprocess
 # root dir for storing multi-rez and rezup preferences
 REZUP_ROOT = os.path.join(site.getuserbase(), "rez")
 
+IS_WIN = sys.platform == "win32"
+
 
 class PathList(object):
     def __init__(self, *paths):
@@ -47,7 +49,7 @@ def rez_env(container_path):
 
 
 def get_prompt():
-    if sys.platform == "win32":
+    if IS_WIN:
         return {
             "PROMPT": "(rez) $P$G",  # CMD
         }
@@ -58,10 +60,20 @@ def get_prompt():
 
 
 def get_shell():
-    if sys.platform == "win32":
+    if IS_WIN:
         return ["cmd", "/Q", "/K"]
     else:
         return ["bash"]
+
+
+def get_venv_bin_dir(container_path):
+    bin_dir = "Scripts" if IS_WIN else "bin"
+    return os.path.join(container_path, bin_dir)
+
+
+def get_venv_python(container_path):
+    ext = ".exe" if IS_WIN else ""
+    return os.path.join(get_venv_bin_dir(container_path), "python" + ext)
 
 
 def run():
@@ -85,7 +97,7 @@ def run():
 
     # for fast access
     if len(sys.argv) == 1:
-        sys.argv += ["use", "default"]
+        sys.argv += ["use", "latest"]
 
     opts = parser.parse_args()
 
@@ -119,7 +131,11 @@ def cmd_use(container, job=None):
 
     env = rez_env(container_path)
     env.update(get_prompt())
-    popen = subprocess.Popen(get_shell(), env=env)
+
+    cmd = get_shell()
+    cmd += [os.path.join(get_venv_bin_dir(container_path), "activate")]
+
+    popen = subprocess.Popen(cmd, env=env)
     stdout, stderr = popen.communicate()
 
     sys.exit(popen.returncode)
@@ -170,9 +186,22 @@ def remove(container_path):
     shutil.rmtree(container_path)
 
 
-def install(container_path, edit_mode=False):
+def install(container_path, edit_mode=False, use_python=None):
 
-    cmd = ["pip", "install"]
+    # create venv
+    venv_dst = os.path.join(container_path, "venv")
+    venv_python = get_venv_python(container_path)
+
+    cmd = [sys.executable, "-m", "virtualenv"]
+    if use_python:
+        cmd += ["--python", use_python]
+
+    cmd += ["--prompt", "X"]
+
+    cmd.append(venv_dst)
+    subprocess.check_output(cmd)
+
+    cmd = [venv_python, "-m", "pip", "install"]
 
     if is_rez_repo():
         if edit_mode:
@@ -280,7 +309,7 @@ if __name__ == '__main__':
 
 
 def find_pythons():
-    ext = ".exe" if sys.platform == "win32" else ""
+    ext = ".exe" if IS_WIN else ""
 
     for path in os.environ["PATH"].split(os.pathsep):
         python_exe = os.path.join(path, "python" + ext)

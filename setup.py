@@ -26,6 +26,7 @@ setup(
     },
     install_requires=[
         "distlib",
+        "virtualenv",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
