@@ -6,6 +6,7 @@ import shutil
 import pkgutil
 import argparse
 import subprocess
+from .container import Container, create_venv
 
 # root dir for storing multi-rez and rezup preferences
 REZUP_ROOT = os.path.join(site.getuserbase(), "rez")
@@ -43,20 +44,9 @@ def rez_env(container_path):
     ] + [
         os.path.join(container_path, "bin")
     ])
-    env["REZUP_PYTHONPATH"] = container_path
+    env["REZUP_PYTHONPATH"] = container_path  # replace by sitecustomize.py
 
     return env
-
-
-def get_prompt():
-    if IS_WIN:
-        return {
-            "PROMPT": "(rez) $P$G",  # CMD
-        }
-    else:
-        return {
-            # "PS1": "??"
-        }
 
 
 def get_shell():
@@ -64,16 +54,6 @@ def get_shell():
         return ["cmd", "/Q", "/K"]
     else:
         return ["bash"]
-
-
-def get_venv_bin_dir(container_path):
-    bin_dir = "Scripts" if IS_WIN else "bin"
-    return os.path.join(container_path, bin_dir)
-
-
-def get_venv_python(container_path):
-    ext = ".exe" if IS_WIN else ""
-    return os.path.join(get_venv_bin_dir(container_path), "python" + ext)
 
 
 def run():
@@ -90,6 +70,10 @@ def run():
     parser_add.add_argument("name", help="container name")
     parser_add.add_argument("-f", "--force", action="store_true")
 
+    parser_push = subparsers.add_parser("push")  # pile, stack, join
+    parser_push.add_argument("name", help="container name")
+    parser_push.add_argument("-t", "--to")
+
     parser_drop = subparsers.add_parser("drop", help="remove rez container")
     parser_drop.add_argument("name", help="container name")
 
@@ -97,20 +81,20 @@ def run():
 
     # for fast access
     if len(sys.argv) == 1:
-        sys.argv += ["use", "latest"]
+        sys.argv += ["use", ".main"]
 
     opts = parser.parse_args()
 
     if opts.cmd == "use":
-        container = opts.name
+        container = Container(REZUP_ROOT, opts.name)
         cmd_use(container, job=opts.do)
 
     elif opts.cmd == "add":
-        container = opts.name
+        container = Container(REZUP_ROOT, opts.name)
         cmd_add(container, force=opts.force)
 
     elif opts.cmd == "drop":
-        container = opts.name
+        container = Container(REZUP_ROOT, opts.name)
         cmd_drop(container)
 
     elif opts.cmd == "list":
@@ -118,22 +102,19 @@ def run():
 
 
 def cmd_use(container, job=None):
-    container_path = os.path.join(REZUP_ROOT, container)
-
-    if not os.path.isdir(container_path):
-        if container == "default":
+    if not container.exists():
+        if container.name == ".main":
             # for first time quick start
-            install(container_path)
+            install(container)
 
         else:
-            print("Container '%s' not exists." % container)
+            print("Container '%s' not exists." % container.path)
             sys.exit(1)
 
-    env = rez_env(container_path)
-    env.update(get_prompt())
+    env = rez_env(container.path)
 
     cmd = get_shell()
-    cmd += [os.path.join(get_venv_bin_dir(container_path), "activate")]
+    cmd += [os.path.join(container.venv_bin_path, "activate")]
 
     popen = subprocess.Popen(cmd, env=env)
     stdout, stderr = popen.communicate()
@@ -142,28 +123,26 @@ def cmd_use(container, job=None):
 
 
 def cmd_add(container, force=False):
-    container_path = os.path.join(REZUP_ROOT, container)
-    edit_mode = container == "live"
+    edit_mode = container.name == "live"
 
-    if os.path.isdir(container_path):
+    if container.exists():
         if force:
-            print("Force remove container '%s'.." % container)
-            remove(container_path)
+            print("Force remove container '%s'.." % container.path)
+            remove(container)
         else:
-            print("Container '%s' already exists." % container)
+            print("Container '%s' already exists." % container.path)
             sys.exit(1)
 
-    install(container_path, edit_mode=edit_mode)
+    install(container, edit_mode=edit_mode)
 
 
 def cmd_drop(container):
-    container_path = os.path.join(REZUP_ROOT, container)
 
-    if os.path.isdir(container_path):
-        print("Removing existing container '%s'.." % container)
-        remove(container_path)
+    if container.exists():
+        print("Removing existing container '%s'.." % container.path)
+        remove(container)
     else:
-        print("Container '%s' not exists." % container)
+        print("Container '%s' not exists." % container.path)
 
     # keep tidy
     if os.path.isdir(REZUP_ROOT) and not os.listdir(REZUP_ROOT):
@@ -181,25 +160,15 @@ def cmd_inventory():
 
 # helpers
 
-def remove(container_path):
-    print("Deleting %s" % container_path)
-    shutil.rmtree(container_path)
+def remove(container):
+    print("Deleting %s" % container.path)
+    shutil.rmtree(container.path)
 
 
-def install(container_path, edit_mode=False, use_python=None):
+def install(container, edit_mode=False, use_python=None):
 
     # create venv
-    venv_dst = os.path.join(container_path, "venv")
-    venv_python = get_venv_python(container_path)
-
-    cmd = [sys.executable, "-m", "virtualenv"]
-    if use_python:
-        cmd += ["--python", use_python]
-
-    cmd += ["--prompt", "X"]
-
-    cmd.append(venv_dst)
-    subprocess.check_output(cmd)
+    venv_python = create_venv(container, use_python=use_python)
 
     cmd = [venv_python, "-m", "pip", "install"]
 
@@ -213,12 +182,12 @@ def install(container_path, edit_mode=False, use_python=None):
     # don't make noise
     cmd.append("--disable-pip-version-check")
 
-    cmd += ["--target", container_path]
+    cmd += ["--target", container.path]
 
     print("Installing container..")
     subprocess.check_output(cmd)
 
-    post_install(container_path)
+    post_install(container.path)
 
 
 def post_install(container_path):
@@ -270,7 +239,6 @@ def create_rez_production_scripts(specifications, bin_path):
     from distlib.scripts import ScriptMaker
 
     maker = ScriptMaker(source_dir=None, target_dir=bin_path)
-    maker.script_template = SCRIPT_TEMPLATE
     maker.executable = sys.executable
 
     # Align with wheel
@@ -293,19 +261,6 @@ def create_rez_production_scripts(specifications, bin_path):
     )
 
     return scripts
-
-
-SCRIPT_TEMPLATE = r'''# -*- coding: utf-8 -*-
-import re
-import os
-import sys
-if "REZUP_PYTHONPATH" in os.environ:
-    sys.path.append(os.environ["REZUP_PYTHONPATH"])
-from %(module)s import %(import_name)s
-if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(%(func)s())
-'''
 
 
 def find_pythons():
