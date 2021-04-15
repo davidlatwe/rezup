@@ -62,22 +62,28 @@ def run():
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
-    parser_use = subparsers.add_parser("use", help="use rez container")
+    parser_use = subparsers.add_parser("use", help="use container/slice")
     parser_use.add_argument("name", help="container name")
+    parser_use.add_argument("-s", "--slice")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
 
-    parser_add = subparsers.add_parser("add", help="add rez container")
+    parser_add = subparsers.add_parser("add", help="add container/slice")
     parser_add.add_argument("name", help="container name")
-    parser_add.add_argument("-f", "--force", action="store_true")
+    parser_add.add_argument("-s", "--slice")
+    parser_add.add_argument("-r", "--recipe")
 
-    parser_push = subparsers.add_parser("push")  # pile, stack, join
-    parser_push.add_argument("name", help="container name")
-    parser_push.add_argument("-t", "--to")
+    parser_pull = subparsers.add_parser("pull")
+    parser_pull.add_argument("name", help="container name")
+    parser_pull.add_argument("-s", "--slice")
+    parser_pull.add_argument("-o", "--over")  # default container .main
 
-    parser_drop = subparsers.add_parser("drop", help="remove rez container")
+    parser_drop = subparsers.add_parser("drop", help="remove container/slice")
     parser_drop.add_argument("name", help="container name")
+    parser_drop.add_argument("-s", "--slice")
 
     parser_list = subparsers.add_parser("list", help="list rez containers")
+    parser_list.add_argument("name", help="container name")  # "*" to list all
+    parser_list.add_argument("-s", "--slice")  # "*" to list all
 
     # for fast access
     if len(sys.argv) == 1:

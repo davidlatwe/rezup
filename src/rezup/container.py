@@ -1,25 +1,26 @@
 """
-container/
+{container}/
     |
-    +-- ext/
+    +-- {timestamp}/
     |   |
-    |   +-- extensionA/
-    |   |   |
-    |   :   +-- x.y.z/
-    |       |   <isolated rez extension and all it's dependencies>
-    |       :
-    |
-    +-- venv/
-    |   |
-    |   +-- x.y.z/
-    |   |   <python interpreter and shared libs>
-    |   :
-    |
-    *-- rez/
+    :   +-- ext/
+        |   |
+        |   +-- {extension}/
+        |   |   <isolated rez extension and all it's dependencies>
+        |   :
         |
-        +-- x.y.z/
+        +-- venv/
+        |   <python interpreter and shared libs>
+        |
+        +-- rez/
         |   <rez package and the binary tools>
-        :
+        |
+        >-- rezup.toml
+        |   <recipe file>
+        |
+        >-- .{slice}.json
+            <info of this container slice, default name "rezup">
+
 
 # To fix version
 # rezup.ini
@@ -27,6 +28,18 @@ container/
 venv={version}
 rez={version}
 ext_{name}={version}
+
+# container recipe
+# rezup.toml
+[venv]
+python = 3.7
+[rez]
+url = ""  # <requirement specifier>, <archive url/path>
+edit = false
+[ext]
+[ext.allzpark]
+url = ""  # <requirement specifier>, <archive url/path>
+edit = true
 
 """
 import os
