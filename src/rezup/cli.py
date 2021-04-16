@@ -57,8 +57,9 @@ def get_shell():
 
 
 def run():
-    # TODO: add --version flag
     parser = argparse.ArgumentParser("rezup")
+    parser.add_argument("-V", "--version", action="store_true",
+                        help="show version and exit.")
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
@@ -90,6 +91,10 @@ def run():
         sys.argv += ["use", ".main"]
 
     opts = parser.parse_args()
+
+    if opts.version:
+        from rezup._version import print_info
+        sys.exit(print_info())
 
     if opts.cmd == "use":
         container = Container(REZUP_ROOT, opts.name)
