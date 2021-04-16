@@ -2,50 +2,53 @@
 {container}/
     |
     +-- {timestamp}/
-    |   |
-    :   +-- ext/
+    |   |   <layer>
+    :   |
+        +-- venv/
+        |   |
+        |   +-- rez/
+        |   |   <default venv>
         |   |
         |   +-- {extension}/
-        |   |   <isolated rez extension and all it's dependencies>
+        |   |   <venv for extension that require isolation>
         |   :
         |
-        +-- venv/
-        |   <python interpreter and shared libs>
-        |
-        +-- rez/
-        |   <rez package and the binary tools>
+        +-- bin/
+        |   <all bin tools>
         |
         >-- rezup.toml
         |   <recipe file>
         |
-        >-- .{slice}.json
-            <info of this container slice, default name "rezup">
+        >-- {layer}.json
+            <info of this container layer, default name "rezup">
 
-
-# To fix version
-# rezup.ini
-[container.{name}]
-venv={version}
-rez={version}
-ext_{name}={version}
 
 # container recipe
 # rezup.toml
-[venv]
-python = 3.7
+
 [rez]
-url = ""  # <requirement specifier>, <archive url/path>
-edit = false
-[ext]
-[ext.allzpark]
-url = ""  # <requirement specifier>, <archive url/path>
+url = "rez>=2.83"
+
+[ext.foo]
+url = "~/dev/foo"
 edit = true
+
+[ext.bar]
+url = "git+git://github.com/get-bar/bar"
+isolation = true
+python = 2.7
+
+[env]
+MY_ENV_VAR = 1
 
 """
 import os
 import sys
+import shutil
 import subprocess
 import virtualenv
+from pathlib import Path
+from datetime import datetime
 
 
 class ContainerError(Exception):
@@ -53,28 +56,118 @@ class ContainerError(Exception):
 
 
 class Container:
+    _root = None
 
-    def __init__(self, root, name):
-        self._root = root
+    def __init__(self, name):
         self._name = name
-        self._path = os.path.join(root, name)
-        self._load_config()
+        self._path = self.root() / name
 
-    def _load_config(self):
-        config_file = os.path.expanduser(os.path.join("~", "rezup.ini"))
-        config_file = os.getenv("REZUP_CONFIG_FILE", config_file)
+    @classmethod
+    def root(cls):
+        if cls._root is None:
+            cls._root = Path(
+                os.getenv("REZUP_ROOT", os.path.expanduser("~/.rezup"))
+            )
+        return cls._root
 
-    @property
-    def root(self):
-        return self._root
-
-    @property
     def name(self):
         return self._name
 
-    @property
     def path(self):
         return self._path
+
+    def is_exists(self):
+        return self._path.is_dir()
+
+    def is_empty(self):
+        if self.is_exists():
+            return bool(next(os.scandir(self._path), None))
+        return False
+
+    def create(self):
+        os.makedirs(self._path, exist_ok=True)
+
+    def purge(self):
+        if self.is_exists():
+            shutil.rmtree(self._path)
+        # keep tidy, try remove the root of containers if it's now empty
+        if os.path.isdir(self._root) and not os.listdir(self._root):
+            shutil.rmtree(self._root)
+
+    def iter_layers(self, validate=True):
+        for entry in os.scandir(self._path):
+            if not entry.is_dir():
+                continue
+
+            layer = Layer(entry.name, container=self)
+            if not validate or layer.is_valid():
+                yield layer
+
+    def get_layer(self):
+        pass
+
+
+class Layer:
+
+    def __init__(self, dir_name, container):
+        self._container = container
+        self._dir_name = dir_name
+        self._path = container.path() / dir_name
+        self._name = None
+        self._timestamp = None
+        self._is_valid = None
+
+    @classmethod
+    def create(cls, container, layer_name="rezup"):
+        dir_name = str(datetime.now().timestamp())
+        layer_path = container.path / dir_name
+        layer_file = layer_path / (layer_name + ".json")
+
+        os.makedirs(layer_path, exist_ok=True)
+        with open(layer_file, "w") as f:
+            f.write(str(layer_path))
+
+        layer = cls(dir_name, container=container)
+        layer.is_valid()
+        return layer
+
+    def validate(self):
+        self._timestamp = datetime.fromtimestamp(self._dir_name)
+        is_valid = True
+        for entry in os.scandir(self._path):
+            if entry.is_file() and entry.name.endswith(".json"):
+                name = entry.name.rsplit(".json")
+                if name:
+                    self._name = name
+                    break
+        else:
+            is_valid = False
+
+        return is_valid
+
+    def is_valid(self):
+        if self._is_valid is None:
+            try:
+                self._is_valid = self.validate()
+            except Exception:
+                self._is_valid = False
+
+        return self._is_valid
+
+    def name(self):
+        return self._name
+
+    def path(self):
+        return self._path
+
+    def timestamp(self):
+        return self._timestamp
+
+    def container(self):
+        return self._container
+
+    def purge(self):
+        pass
 
     @property
     def venv_path(self):

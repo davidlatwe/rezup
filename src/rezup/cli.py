@@ -8,8 +8,6 @@ import argparse
 import subprocess
 from .container import Container, create_venv
 
-# root dir for storing multi-rez and rezup preferences
-REZUP_ROOT = os.path.join(site.getuserbase(), "rez")
 
 IS_WIN = sys.platform == "win32"
 
@@ -63,28 +61,28 @@ def run():
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
-    parser_use = subparsers.add_parser("use", help="use container/slice")
+    parser_use = subparsers.add_parser("use", help="use container/layer")
     parser_use.add_argument("name", help="container name")
-    parser_use.add_argument("-s", "--slice")
+    parser_use.add_argument("-l", "--layer")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
 
-    parser_add = subparsers.add_parser("add", help="add container/slice")
+    parser_add = subparsers.add_parser("add", help="add container/layer")
     parser_add.add_argument("name", help="container name")
-    parser_add.add_argument("-s", "--slice")
+    parser_add.add_argument("-l", "--layer")
     parser_add.add_argument("-r", "--recipe")
 
     parser_pull = subparsers.add_parser("pull")
     parser_pull.add_argument("name", help="container name")
-    parser_pull.add_argument("-s", "--slice")
+    parser_pull.add_argument("-l", "--layer")
     parser_pull.add_argument("-o", "--over")  # default container .main
 
-    parser_drop = subparsers.add_parser("drop", help="remove container/slice")
+    parser_drop = subparsers.add_parser("drop", help="remove container/layer")
     parser_drop.add_argument("name", help="container name")
-    parser_drop.add_argument("-s", "--slice")
+    parser_drop.add_argument("-l", "--layer")
 
     parser_list = subparsers.add_parser("list", help="list rez containers")
     parser_list.add_argument("name", help="container name")  # "*" to list all
-    parser_list.add_argument("-s", "--slice")  # "*" to list all
+    parser_list.add_argument("-l", "--layer")  # "*" to list all
 
     # for fast access
     if len(sys.argv) == 1:
@@ -97,15 +95,15 @@ def run():
         sys.exit(print_info())
 
     if opts.cmd == "use":
-        container = Container(REZUP_ROOT, opts.name)
+        container = Container(opts.name)
         cmd_use(container, job=opts.do)
 
     elif opts.cmd == "add":
-        container = Container(REZUP_ROOT, opts.name)
+        container = Container(opts.name)
         cmd_add(container, force=opts.force)
 
     elif opts.cmd == "drop":
-        container = Container(REZUP_ROOT, opts.name)
+        container = Container(opts.name)
         cmd_drop(container)
 
     elif opts.cmd == "list":
@@ -156,8 +154,8 @@ def cmd_drop(container):
         print("Container '%s' not exists." % container.path)
 
     # keep tidy
-    if os.path.isdir(REZUP_ROOT) and not os.listdir(REZUP_ROOT):
-        shutil.rmtree(REZUP_ROOT)
+    if os.path.isdir(container.root) and not os.listdir(REZUP_ROOT):
+        shutil.rmtree(container.root)
 
 
 def cmd_inventory():
