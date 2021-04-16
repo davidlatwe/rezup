@@ -95,11 +95,11 @@ class Container:
             shutil.rmtree(self._root)
 
     def iter_layers(self, validate=True):
-        for entry in os.scandir(self._path):
-            if not entry.is_dir():
+        for entry in sorted(os.listdir(self._path), reverse=True):
+            if not os.path.isdir(self._path / entry):
                 continue
 
-            layer = Layer(entry.name, container=self)
+            layer = Layer(entry, container=self)
             if not validate or layer.is_valid():
                 yield layer
 
@@ -132,13 +132,15 @@ class Layer:
         return layer
 
     def validate(self):
-        self._timestamp = datetime.fromtimestamp(self._dir_name)
         is_valid = True
+        seconds = float(self._dir_name)
+        timestamp = datetime.fromtimestamp(seconds)
         for entry in os.scandir(self._path):
             if entry.is_file() and entry.name.endswith(".json"):
                 name = entry.name.rsplit(".json")
                 if name:
                     self._name = name
+                    self._timestamp = timestamp
                     break
         else:
             is_valid = False
@@ -149,7 +151,7 @@ class Layer:
         if self._is_valid is None:
             try:
                 self._is_valid = self.validate()
-            except Exception:
+            except (OSError, ValueError):
                 self._is_valid = False
 
         return self._is_valid
