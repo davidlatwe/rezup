@@ -40,8 +40,8 @@ class TestContainer(unittest.TestCase):
                         time.sleep(0.2)
 
     def test_create(self):
-        container = Container("foo")
-        container.create()
+        container = Container.create("foo")
 
         expected_path = os.path.join(self.root, "foo")
         self.assertTrue(os.path.isdir(expected_path))
+        self.assertTrue(container.is_exists())

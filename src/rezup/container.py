@@ -6,12 +6,15 @@
     :   |
         +-- venv/
         |   |
-        |   +-- rez/
-        |   |   <default venv>
+        |   +-- _rez/
+        |   |   <default rez venv>
         |   |
         |   +-- {extension}/
         |   |   <venv for extension that require isolation>
         |   :
+        |
+        +-- rez/
+        |   <rez package install, shared with all venvs>
         |
         +-- bin/
         |   <all bin tools>
@@ -56,7 +59,7 @@ class ContainerError(Exception):
 
 
 class Container:
-    _root = None
+    __root = None
 
     def __init__(self, name):
         self._name = name
@@ -64,11 +67,16 @@ class Container:
 
     @classmethod
     def root(cls):
-        if cls._root is None:
-            cls._root = Path(
+        if cls.__root is None:
+            cls.__root = Path(
                 os.getenv("REZUP_ROOT", os.path.expanduser("~/.rezup"))
             )
-        return cls._root
+        return cls.__root
+
+    @classmethod
+    def create(cls, name):
+        os.makedirs(cls.root() / name, exist_ok=True)
+        return Container(name)
 
     def name(self):
         return self._name
@@ -80,22 +88,20 @@ class Container:
         return self._path.is_dir()
 
     def is_empty(self):
-        if self.is_exists():
-            return bool(next(os.scandir(self._path), None))
-        return False
-
-    def create(self):
-        os.makedirs(self._path, exist_ok=True)
+        return not bool(next(self.iter_layers(), None))
 
     def purge(self):
         if self.is_exists():
             shutil.rmtree(self._path)
         # keep tidy, try remove the root of containers if it's now empty
-        if os.path.isdir(self._root) and not os.listdir(self._root):
-            shutil.rmtree(self._root)
+        root = self.root()
+        if os.path.isdir(root) and not os.listdir(root):
+            shutil.rmtree(root)
 
-    def iter_layers(self, validate=True):
-        for entry in sorted(os.listdir(self._path), reverse=True):
+    def iter_layers(self, validate=True, latest_first=True):
+        if not self.is_exists():
+            return
+        for entry in sorted(os.listdir(self._path), reverse=latest_first):
             if not os.path.isdir(self._path / entry):
                 continue
 
@@ -103,22 +109,32 @@ class Container:
             if not validate or layer.is_valid():
                 yield layer
 
-    def get_layer(self):
-        pass
+    def get_layer(self, layer_name=None):
+        layer_name = layer_name or Layer.DEFAULT_NAME
+        return next(
+            (layer for layer in self.iter_layers()
+             if layer.name() == layer_name),
+            None
+        )
+
+    def new_layer(self, layer_name=None):
+        return Layer.create(self, layer_name=layer_name)
 
 
 class Layer:
+    DEFAULT_NAME = "default"
 
-    def __init__(self, dir_name, container):
+    def __init__(self, dirname, container):
         self._container = container
-        self._dir_name = dir_name
-        self._path = container.path() / dir_name
+        self._dirname = dirname
+        self._path = container.path() / dirname
         self._name = None
         self._timestamp = None
         self._is_valid = None
 
     @classmethod
-    def create(cls, container, layer_name="rezup"):
+    def create(cls, container, layer_name=None):
+        layer_name = layer_name or cls.DEFAULT_NAME
         dir_name = str(datetime.now().timestamp())
         layer_path = container.path / dir_name
         layer_file = layer_path / (layer_name + ".json")
@@ -133,7 +149,7 @@ class Layer:
 
     def validate(self):
         is_valid = True
-        seconds = float(self._dir_name)
+        seconds = float(self._dirname)
         timestamp = datetime.fromtimestamp(seconds)
         for entry in os.scandir(self._path):
             if entry.is_file() and entry.name.endswith(".json"):
@@ -156,8 +172,14 @@ class Layer:
 
         return self._is_valid
 
+    def is_ready(self):
+        return os.path.isfile(self._path / "rezup.toml")
+
     def name(self):
         return self._name
+
+    def dirname(self):
+        return self._dirname
 
     def path(self):
         return self._path
@@ -169,13 +191,33 @@ class Layer:
         return self._container
 
     def purge(self):
+        if self.is_valid():
+            shutil.rmtree(self._path)
+
+    def iter_backward(self):
+        for layer in self._container.iter_layers(latest_first=True):
+            if (layer.name() == self._name
+                    and layer.timestamp() < self._timestamp):
+                yield layer
+
+    def iter_forward(self):
+        for layer in self._container.iter_layers(latest_first=False):
+            if (layer.name() == self._name
+                    and layer.timestamp() > self._timestamp):
+                yield layer
+
+
+class LayerResource:
+
+    def __init__(self, layer):
+        self._layer = layer
+
+    def recipe(self):
         pass
 
-    @property
     def venv_path(self):
         return os.path.join(self._path, "venv")
 
-    @property
     def venv_bin_path(self):
         version = None  # TODO: read from config
         venv_path = self.venv_path
@@ -185,7 +227,6 @@ class Layer:
         else:
             return os.path.join(venv_path, version, "bin")
 
-    @property
     def rez_path(self):
         return os.path.join(self._path, "rez")
 
