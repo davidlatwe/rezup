@@ -106,8 +106,8 @@ class Container:
                     and (not only_ready or layer.is_ready())):
                 return layer
 
-    def new_layer(self, layer_name=None):
-        return Layer.create(self, layer_name=layer_name)
+    def new_layer(self, layer_name=None, recipe_file=None):
+        return Layer.create(self, layer_name, recipe_file)
 
 
 class Layer:
@@ -122,7 +122,7 @@ class Layer:
         self._is_valid = None
 
     @classmethod
-    def create(cls, container, layer_name=None):
+    def create(cls, container, layer_name=None, recipe_file=None):
         layer_name = layer_name or cls.DEFAULT_NAME
         dir_name = str(datetime.now().timestamp())
         layer_path = container.path / dir_name
@@ -137,8 +137,32 @@ class Layer:
             }, indent=4))
 
         layer = cls(dir_name, container=container)
-        layer.is_valid()
+        if not layer.is_valid():
+            raise Exception("Invalid new layer, this is a bug.")
+
+        layer._install(recipe_file)
+
         return layer
+
+    def _install(self, recipe_file=None):
+        mod_path = os.path.dirname(__file__)
+        recipe = toml.load(os.path.join(mod_path, "rezup.toml"))
+        if recipe_file:
+            deep_update(recipe, toml.load(recipe_file))
+
+        tools = []
+        installer = Installer(self)
+
+        tools.append(Tool(recipe["rez"]))
+        for data in recipe.get("extensions", []):
+            tools.append(Tool(data))
+
+        for tool in tools:
+            installer.install(tool)
+
+        # mark as ready
+        with open(self._path / "rezup.toml", "w") as f:
+            toml.dump(recipe, f)
 
     def validate(self):
         is_valid = True
@@ -199,43 +223,10 @@ class Layer:
                     and layer.timestamp() > self._timestamp):
                 yield layer
 
-    def resource(self):
-        return LayerResource(self)
-
-
-class LayerResource:
-
-    def __init__(self, layer):
-        self._layer = layer
-
-    def install(self, recipe_file=None):
-        mod_path = os.path.dirname(__file__)
-        recipe = toml.load(os.path.join(mod_path, "rezup.toml"))
-        if recipe_file:
-            deep_update(recipe, toml.load(recipe_file))
-
-        tools = []
-        installer = Installer(self._layer)
-
-        tools.append(Tool(recipe["rez"]))
-        for data in recipe.get("extensions", []):
-            tools.append(Tool(data))
-
-        for tool in tools:
-            installer.install(tool)
-
-    def bin_path(self):
-        return os.path.join(self._layer.path(), "bin")
-
-    def venv_path(self):
-        return os.path.join(self._layer.path(), "venv")
-
-    def rez_path(self):
-        return os.path.join(self._layer.path(), "rez")
-
-    def env(self):
+    def use(self):
         # REZUP_CONTAINER_PATH
         # REZUP_CONTAINER_REZ_PATH
+        # Use cmd2
         pass
 
 
