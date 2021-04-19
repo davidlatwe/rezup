@@ -30,11 +30,18 @@ import os
 import sys
 import json
 import shutil
+import pkgutil
 import subprocess
 import virtualenv
+from distlib.scripts import ScriptMaker
 from pathlib import Path
 from datetime import datetime
 from ._vendor import toml
+
+try:
+    from importlib.metadata import Distribution
+except ImportError:
+    from importlib_metadata import Distribution
 
 
 class ContainerError(Exception):
@@ -192,59 +199,14 @@ class Layer:
                     and layer.timestamp() > self._timestamp):
                 yield layer
 
+    def resource(self):
+        return LayerResource(self)
+
 
 class LayerResource:
 
     def __init__(self, layer):
         self._layer = layer
-
-    def _install(self, tool):
-
-        if tool.get("isolation"):
-            self._create_venv(recipe["rez"])
-
-        cmd = [python_exec, "-m", "pip", "install"]
-
-        if from_source(name):
-            if edit_mode:
-                cmd.append("-e")
-            cmd.append(".")  # TODO: get source path from config, not cwd
-        else:
-            cmd.append(name)  # from pypi
-
-        # don't make noise
-        cmd.append("--disable-pip-version-check")
-
-        cmd += ["--target", dst]
-
-        print("Installing %s.." % name)
-        subprocess.check_output(cmd)
-
-    def _create_venv(self, use_python=None):
-        use_python = use_python or sys.executable
-
-        args = [
-            "--python", use_python,
-            "--prompt", "{layer_name}@{container_name}:{timestamp}" container.name
-        ]
-        # preview python version for final dst
-        session = virtualenv.session_via_cli(args + ["."])
-        dst = os.path.join(container.venv_path, session.interpreter.version_str)
-        args.append(dst)
-        # create venv
-        session = virtualenv.cli_run(args + [dst])
-        # add sitecustomize.py
-        site_script = os.path.join(session.creator.purelib, "sitecustomize.py")
-        with open(site_script, "w") as f:
-            f.write(sitecustomize)
-        # patch activators
-        # TODO: replace VIRTUAL_ENV, install rez bin tools under same bin suffix
-        #   or, prepend rez bin path to VIRTUAL_ENV
-
-        return str(session.creator.exe)
-
-    def _make_scripts(self):
-        pass
 
     def install(self, recipe_file=None):
         mod_path = os.path.dirname(__file__)
@@ -252,27 +214,24 @@ class LayerResource:
         if recipe_file:
             deep_update(recipe, toml.load(recipe_file))
 
-        self._install(recipe["rez"])
-        for tool in recipe.get("extensions", []):
-            self._install(tool)
+        tools = []
+        installer = Installer(self._layer)
+
+        tools.append(Tool(recipe["rez"]))
+        for data in recipe.get("extensions", []):
+            tools.append(Tool(data))
+
+        for tool in tools:
+            installer.install(tool)
+
+    def bin_path(self):
+        return os.path.join(self._layer.path(), "bin")
 
     def venv_path(self):
-        return os.path.join(self._path, "venv")
-
-    def venv_bin_path(self):
-        version = None  # TODO: read from config
-        venv_path = self.venv_path
-        version = version or get_latest(venv_path)
-        if sys.platform == "win32":
-            return os.path.join(venv_path, version, "Scripts")
-        else:
-            return os.path.join(venv_path, version, "bin")
+        return os.path.join(self._layer.path(), "venv")
 
     def rez_path(self):
-        return os.path.join(self._path, "rez")
-
-    def exists(self):
-        return os.path.isdir(self._path)
+        return os.path.join(self._layer.path(), "rez")
 
     def env(self):
         # REZUP_CONTAINER_PATH
@@ -282,14 +241,148 @@ class LayerResource:
 
 class Tool:
 
-    def __init__(self):
-        pass
+    def __init__(self, data):
+        self.name = data["name"]
+        self.url = data["url"]
+        self.edit = data.get("edit", False)
+        self.isolation = data.get("isolation", False)
+        self.python = data.get("python", None)
 
 
-def get_latest(path):
-    dirs = os.listdir(path)
-    latest = sorted(dirs)[-1]
-    return latest
+class Installer:
+
+    site_template = r"""# -*- coding: utf-8 -*-
+import site
+site.addsitedir("{layer}")
+"""
+
+    def __init__(self, layer):
+        self._container = layer.container()
+        self._layer = layer
+        self._default_venv = None
+
+    def install(self, tool):
+        if tool.isolation or tool.name == "rez":
+            venv_session = self.create_venv(tool)
+            if tool.name == "rez":
+                self._default_venv = venv_session
+        else:
+            venv_session = self._default_venv
+
+        if venv_session is None:
+            raise Exception("No python venv created, this is a bug.")
+
+        self.install_package(tool, venv_session)
+
+    def create_venv(self, tool):
+        use_python = tool.python or sys.executable
+        dst = self._layer.path() / "venv" / tool.name
+
+        # create venv
+        args = [
+            "--python", use_python,
+            dst
+        ]
+        session = virtualenv.cli_run(args)
+
+        # add sitecustomize.py
+        site_script = session.creator.purelib / "sitecustomize.py"
+        sitecustomize = self.site_template.format(layer=self._layer.path())
+        with open(site_script, "w") as f:
+            f.write(sitecustomize)
+
+        return session
+
+    def install_package(self, tool, venv_session):
+        python_exec = str(venv_session.creator.exe)
+        cmd = [python_exec, "-m", "pip", "install"]
+
+        if tool.edit:
+            cmd.append("-e")
+        cmd.append(tool.url)
+
+        # don't make noise
+        cmd.append("--disable-pip-version-check")
+
+        if tool.name == "rez":
+            cmd += ["--target", str(self._layer.path())]
+
+        print("Installing %s.." % tool.name)
+        subprocess.check_output(cmd)
+
+        if tool.name == "rez":
+            self.rez_production_install(tool, venv_session)
+        else:
+            self.create_production_scripts(tool, venv_session)
+
+    def rez_production_install(self, tool, venv_session):
+        bin_path = self._layer.path() / "bin"
+        rez_cli = self._layer.path() / "rez" / "cli"
+        version_py = self._layer.path() / "rez" / "utils" / "_version.py"
+
+        rez_entries = None
+        for importer, modname, _ in pkgutil.iter_modules([rez_cli]):
+            if modname == "_entry_points":
+                rez_entries = importer.find_module(modname).load_module(modname)
+                break
+
+        for file in os.listdir(bin_path):
+            os.remove(bin_path / file)
+        specifications = rez_entries.get_specifications().values()
+        self.create_production_scripts(tool, venv_session, specifications)
+
+        # mark as production install
+        _locals = {"_rez_version": ""}
+        with open(version_py) as f:
+            exec(f.read(), globals(), _locals)
+        with open(bin_path / ".rez_production_install", "w") as f:
+            f.write(_locals["_rez_version"])
+
+    def create_production_scripts(self,
+                                  tool,
+                                  venv_session,
+                                  specifications=None):
+        """Create Rez production used binary scripts
+
+        The binary script will be executed with Python interpreter flag -E,
+        which will ignore all PYTHON* env vars, e.g. PYTHONPATH and PYTHONHOME.
+
+        """
+        if specifications is None:
+            site_packages = str(venv_session.creator.purelib)
+            dists = Distribution.discover(name=tool.name, path=[site_packages])
+            specifications = [
+                f"{ep.name} = {ep.value}"
+                for dist in dists
+                for ep in dist.entry_points
+                if ep.group == "console_scripts"
+            ]
+
+        bin_path = self._layer.path() / "bin"
+
+        maker = ScriptMaker(source_dir=None, target_dir=bin_path)
+        maker.executable = str(venv_session.creator.exe)
+
+        # Align with wheel
+        #
+        # Ensure we don't generate any variants for scripts because this is
+        # almost never what somebody wants.
+        # See https://bitbucket.org/pypa/distlib/issue/35/
+        maker.variants = {""}
+        # Ensure old scripts are overwritten.
+        # See https://github.com/pypa/pip/issues/1800
+        maker.clobber = True
+        # This is required because otherwise distlib creates scripts that are
+        # not executable.
+        # See https://bitbucket.org/pypa/distlib/issue/32/
+        maker.set_mode = True
+
+        scripts = maker.make_multiple(
+            specifications=specifications,
+            options=dict(interpreter_args=["-E"])
+        )
+
+        return scripts
 
 
 def deep_update(dict1, dict2):
@@ -298,17 +391,3 @@ def deep_update(dict1, dict2):
             deep_update(dict1[key], value)
         else:
             dict1[key] = value
-
-
-sitecustomize = r"""# -*- coding: utf-8 -*-
-import site
-site.addsitedir("{layer_path}")
-"""
-
-
-def from_source(name):
-    # TODO: get source path from config, not cwd
-    # simple and quick check
-    setup_py = os.path.join(os.getcwd(), "setup.py")
-    pkg_src = os.path.join(os.getcwd(), "src", name)
-    return os.path.isfile(setup_py) and os.path.isdir(pkg_src)

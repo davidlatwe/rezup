@@ -1,9 +1,7 @@
 
 import os
 import sys
-import site
 import shutil
-import pkgutil
 import argparse
 import subprocess
 from .container import Container, create_venv
@@ -197,79 +195,6 @@ def install(container, edit_mode=False, use_python=None):
     subprocess.check_output(cmd)
 
     post_install(container.path)
-
-
-def post_install(container_path):
-    bin_path = os.path.join(container_path, "bin")
-    rez_cli = os.path.join(container_path, "rez", "cli")
-    version_py = os.path.join(container_path, "rez", "utils", "_version.py")
-
-    rez_entries = None
-    for importer, modname, _ in pkgutil.iter_modules([rez_cli]):
-        if modname == "_entry_points":
-            rez_entries = importer.find_module(modname).load_module(modname)
-            break
-
-    if rez_entries is not None:
-        specifications = rez_entries.get_specifications().values()
-        create_rez_production_scripts(specifications, bin_path)
-    else:
-        print("Rez entry points not found, cannot make scripts.")
-
-    if os.path.isfile(version_py):
-        _locals = {"_rez_version": ""}
-        with open(version_py) as f:
-            exec(f.read(), globals(), _locals)
-        with open(os.path.join(bin_path, ".rez_production_install"), "w") as f:
-            f.write(_locals["_rez_version"])
-    else:
-        print("Rez version file not found, install incomplete.")
-
-
-def is_rez_repo():
-    # simple and quick check
-    setup_py = os.path.join(os.getcwd(), "setup.py")
-    rez_src = os.path.join(os.getcwd(), "src", "rez")
-    return os.path.isfile(setup_py) and os.path.isdir(rez_src)
-
-
-def create_rez_production_scripts(specifications, bin_path):
-    """Create Rez production used binary scripts
-
-    The binary script will be executed with Python interpreter flag -E, which
-    will ignore all PYTHON* env vars, e.g. PYTHONPATH and PYTHONHOME.
-
-    But for case like installing rez with `pip install rez --target <dst>`,
-    which may install rez packages into a custom location that cannot be
-    seen by Python unless setting PYTHONPATH, use REZUP_PYTHONPATH to
-    expose <dst>, it will be appended into sys.path before execute.
-
-    """
-    from distlib.scripts import ScriptMaker
-
-    maker = ScriptMaker(source_dir=None, target_dir=bin_path)
-    maker.executable = sys.executable
-
-    # Align with wheel
-    #
-    # Ensure we don't generate any variants for scripts because this is almost
-    # never what somebody wants.
-    # See https://bitbucket.org/pypa/distlib/issue/35/
-    maker.variants = {""}
-    # Ensure old scripts are overwritten.
-    # See https://github.com/pypa/pip/issues/1800
-    maker.clobber = True
-    # This is required because otherwise distlib creates scripts that are not
-    # executable.
-    # See https://bitbucket.org/pypa/distlib/issue/32/
-    maker.set_mode = True
-
-    scripts = maker.make_multiple(
-        specifications=specifications,
-        options=dict(interpreter_args=["-E"])
-    )
-
-    return scripts
 
 
 def find_pythons():
