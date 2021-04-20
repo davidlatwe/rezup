@@ -59,29 +59,31 @@ class ContainerError(Exception):
 
 class Container:
 
-    def __init__(self, name, root, remote=False):
+    def __init__(self, name, root, is_remote=False):
         root = Path(root)
 
-        self._remote = remote
+        self._remote = is_remote
         self._name = name
         self._root = root
         self._path = root / name
 
     @classmethod
-    def create(cls, name, remote=False):
-        if remote:
-            if "REZUP_ROOT_REMOTE" not in os.environ:
-                raise Exception("Container remote root not set, "
-                                "check $REZUP_ROOT_REMOTE")
-
-            root = Path(os.environ["REZUP_ROOT_REMOTE"])
+    def create(cls, name, root=None, is_remote=False):
+        if is_remote:
+            if root:
+                root = Path(root)
+            elif "REZUP_ROOT_REMOTE" in os.environ:
+                root = Path(os.environ["REZUP_ROOT_REMOTE"])
+            else:
+                raise Exception("Remote root not not provided.")
         else:
             root = Path(
+                root or
                 os.getenv("REZUP_ROOT_LOCAL", os.path.expanduser("~/.rezup"))
             )
 
         os.makedirs(root / name, exist_ok=True)
-        return Container(name, root, remote)
+        return Container(name, root, is_remote)
 
     def root(self):
         return self._root

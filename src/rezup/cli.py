@@ -62,12 +62,8 @@ def run():
     parser_use = subparsers.add_parser("use", help="use container/layer")
     parser_use.add_argument("name", help="container name")
     parser_use.add_argument("-l", "--layer")
+    parser_use.add_argument("-c", "--create")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
-
-    parser_add = subparsers.add_parser("add", help="add container/layer")
-    parser_add.add_argument("name", help="container name")
-    parser_add.add_argument("-l", "--layer")
-    parser_add.add_argument("-r", "--recipe")
 
     parser_pull = subparsers.add_parser("pull")
     parser_pull.add_argument("name", help="container name")
