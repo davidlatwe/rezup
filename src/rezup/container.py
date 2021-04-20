@@ -2,7 +2,7 @@
 {container}/
     |
     +-- {timestamp}/
-    |   |   <layer>
+    |   |   <revision>
     :   |
         +-- venv/
         |   |
@@ -22,8 +22,8 @@
         >-- rezup.toml
         |   <recipe file>
         |
-        >-- {layer}.json
-            <info of this container layer, default name "rezup">
+        >-- revision.json
+            <info of this container revision>
 
 """
 import os
@@ -98,7 +98,7 @@ class Container:
         return self._path.is_dir()
 
     def is_empty(self):
-        return not bool(next(self.iter_layers(), None))
+        return not bool(next(self.iter_revision(), None))
 
     def is_remote(self):
         return self._remote
@@ -111,76 +111,61 @@ class Container:
         if os.path.isdir(root) and not os.listdir(root):
             shutil.rmtree(root)
 
-    def iter_layers(self, validate=True, latest_first=True):
+    def iter_revision(self, validate=True, latest_first=True):
         if not self.is_exists():
             return
         for entry in sorted(os.listdir(self._path), reverse=latest_first):
             if not os.path.isdir(self._path / entry):
                 continue
 
-            layer = Layer(entry, container=self)
-            if not validate or layer.is_valid():
-                yield layer
+            revision = Revision(entry, container=self)
+            if not validate or revision.is_valid():
+                yield revision
 
-    def get_latest_layer(self, layer_name=None, only_ready=True):
-        layer_name = layer_name or Layer.DEFAULT_NAME
-        for layer in self.iter_layers():
-            if (layer.name() == layer_name
-                    and (not only_ready or layer.is_ready())):
-                return layer
+    def get_latest_revision(self, only_ready=True):
+        for revision in self.iter_revision():
+            if not only_ready or revision.is_ready():
+                return revision
 
-    def get_layer_by_time(self,
-                          timestamp,
-                          strict=False,
-                          layer_name=None,
-                          only_ready=True):
-        layer_name = layer_name or Layer.DEFAULT_NAME
-        for layer in self.iter_layers():
-            if (layer.name() == layer_name
-                    and (not only_ready or layer.is_ready())):
+    def get_revision_at_time(self, timestamp, strict=False, only_ready=True):
+        for revision in self.iter_revision():
+            if not only_ready or revision.is_ready():
+                if (revision.timestamp() == timestamp
+                        or (not strict and revision.timestamp() <= timestamp)):
+                    return revision
 
-                if (layer.timestamp() == timestamp
-                        or (not strict and layer.timestamp() <= timestamp)):
-                    return layer
-
-    def new_layer(self, layer_name=None, recipe_file=None, timestamp=None):
-        return Layer.create(self, layer_name, recipe_file, timestamp)
+    def new_revision(self, recipe_file=None, timestamp=None):
+        return Revision.create(self, recipe_file, timestamp)
 
 
-class Layer:
-    DEFAULT_NAME = "default"
+class Revision:
 
     def __init__(self, dirname, container):
         self._container = container
         self._dirname = dirname
         self._path = container.path() / dirname
-        self._name = None
         self._timestamp = None
         self._is_valid = None
         self._recipe = self._path / "rezup.toml"
 
     @classmethod
-    def create(cls,
-               container,
-               layer_name=None,
-               recipe_file=None,
-               timestamp=None):
-        layer_name = layer_name or cls.DEFAULT_NAME
+    def create(cls, container, recipe_file=None, timestamp=None):
         dir_name = str(timestamp or datetime.now().timestamp())
-        layer_path = container.path() / dir_name
-        layer_file = layer_path / (layer_name + ".json")
+        revision_path = container.path() / dir_name
+        revision_file = revision_path / "revision.json"
 
-        os.makedirs(layer_path, exist_ok=True)
-        with open(layer_file, "w") as f:
+        os.makedirs(revision_path, exist_ok=True)
+        with open(revision_file, "w") as f:
             # metadata
             f.write(json.dumps({
-                "layer_name": layer_name,
-                "layer_path": str(layer_path),
+                # "creator":
+                # "hostname":
+                "revision_path": str(revision_path),
             }, indent=4))
 
-        layer = cls(dir_name, container=container)
-        if not layer.is_valid():
-            raise Exception("Invalid new layer, this is a bug.")
+        revision = cls(dir_name, container=container)
+        if not revision.is_valid():
+            raise Exception("Invalid new revision, this is a bug.")
 
         # compose recipe
         mod_path = os.path.dirname(__file__)
@@ -189,12 +174,12 @@ class Layer:
             deep_update(recipe, toml.load(recipe_file))
         # install
         if not container.is_remote():
-            layer._install(recipe)
+            revision._install(recipe)
         # mark as ready
-        with open(layer._recipe, "w") as f:
+        with open(revision._recipe, "w") as f:
             toml.dump(recipe, f)
 
-        return layer
+        return revision
 
     def _install(self, recipe):
         tools = []
@@ -213,13 +198,8 @@ class Layer:
         is_valid = True
         seconds = float(self._dirname)
         timestamp = datetime.fromtimestamp(seconds)
-        for entry in os.scandir(self._path):
-            if entry.is_file() and entry.name.endswith(".json"):
-                name = entry.name.rsplit(".json", 1)[0]
-                if name:
-                    self._name = name
-                    self._timestamp = timestamp
-                    break
+        if os.path.isfile(self._path / "revision.json"):
+            self._timestamp = timestamp
         else:
             is_valid = False
 
@@ -236,9 +216,6 @@ class Layer:
 
     def is_ready(self):
         return os.path.isfile(self._recipe)
-
-    def name(self):
-        return self._name
 
     def dirname(self):
         return self._dirname
@@ -261,36 +238,31 @@ class Layer:
             shutil.rmtree(self._path)
 
     def iter_backward(self):
-        for layer in self._container.iter_layers(latest_first=True):
-            if (layer.name() == self._name
-                    and layer.timestamp() < self._timestamp):
-                yield layer
+        for revision in self._container.iter_revision(latest_first=True):
+            if revision.timestamp() < self._timestamp:
+                yield revision
 
     def iter_forward(self):
-        for layer in self._container.iter_layers(latest_first=False):
-            if (layer.name() == self._name
-                    and layer.timestamp() > self._timestamp):
-                yield layer
+        for revision in self._container.iter_revision(latest_first=False):
+            if revision.timestamp() > self._timestamp:
+                yield revision
 
     def use(self):
         if not self.is_valid():
-            raise Exception("Cannot use invalid layer.")
+            raise Exception("Cannot use invalid revision.")
         if not self.is_ready():
-            raise Exception("Layer is not ready to be used.")
+            raise Exception("Revision is not ready to be used.")
 
         if self._container.is_remote():
             # get local
             name = self._container.name()
-            container = Container.create(name, remote=False)
-            layer = container.get_layer_by_time(self._timestamp,
-                                                strict=True,
-                                                layer_name=self._name)
-            if layer is None:
-                layer = container.new_layer(self._name,
-                                            recipe_file=self._recipe,
-                                            timestamp=self._timestamp)
+            container = Container.create(name, is_remote=False)
+            revision = container.get_revision_at_time(self._timestamp,
+                                                      strict=True)
+            if revision is None:
+                revision = container.new_revision(self._recipe, self._timestamp)
             # use local
-            layer.use()
+            revision.use()
 
         else:
             # Launch subprocess
@@ -324,12 +296,12 @@ class Installer:
 
     site_template = r"""# -*- coding: utf-8 -*-
 import site
-site.addsitedir(r"{layer}")
+site.addsitedir(r"{revision}")
 """
 
-    def __init__(self, layer):
-        self._container = layer.container()
-        self._layer = layer
+    def __init__(self, revision):
+        self._container = revision.container()
+        self._revision = revision
         self._default_venv = None
 
     def install(self, tool):
@@ -347,7 +319,7 @@ site.addsitedir(r"{layer}")
 
     def create_venv(self, tool):
         use_python = tool.python or sys.executable
-        dst = self._layer.path() / "venv" / tool.name
+        dst = self._revision.path() / "venv" / tool.name
 
         # create venv
         args = [
@@ -358,7 +330,7 @@ site.addsitedir(r"{layer}")
 
         # add sitecustomize.py
         site_script = session.creator.purelib / "sitecustomize.py"
-        sitecustomize = self.site_template.format(layer=self._layer.path())
+        sitecustomize = self.site_template.format(revision=self._revision.path())
         with open(site_script, "w") as f:
             f.write(sitecustomize)
 
@@ -376,7 +348,7 @@ site.addsitedir(r"{layer}")
         cmd.append("--disable-pip-version-check")
 
         if tool.name == "rez":
-            cmd += ["--target", str(self._layer.path())]
+            cmd += ["--target", str(self._revision.path())]
 
         print("Installing %s.." % tool.name)
         subprocess.check_output(cmd)
@@ -387,9 +359,9 @@ site.addsitedir(r"{layer}")
             self.create_production_scripts(tool, venv_session)
 
     def rez_production_install(self, tool, venv_session):
-        bin_path = self._layer.path() / "bin"
-        rez_cli = self._layer.path() / "rez" / "cli"
-        version_py = self._layer.path() / "rez" / "utils" / "_version.py"
+        bin_path = self._revision.path() / "bin"
+        rez_cli = self._revision.path() / "rez" / "cli"
+        version_py = self._revision.path() / "rez" / "utils" / "_version.py"
 
         rez_entries = None
         for importer, modname, _ in pkgutil.iter_modules([str(rez_cli)]):
@@ -430,7 +402,7 @@ site.addsitedir(r"{layer}")
                 if ep.group == "console_scripts"
             ]
 
-        bin_path = self._layer.path() / "bin"
+        bin_path = self._revision.path() / "bin"
 
         maker = ScriptMaker(source_dir=None, target_dir=bin_path)
         maker.executable = str(venv_session.creator.exe)

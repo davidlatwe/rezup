@@ -40,16 +40,8 @@ def rez_env(container_path):
     ] + [
         os.path.join(container_path, "bin")
     ])
-    env["REZUP_PYTHONPATH"] = container_path  # replace by sitecustomize.py
 
     return env
-
-
-def get_shell():
-    if IS_WIN:
-        return ["cmd", "/Q", "/K"]
-    else:
-        return ["bash"]
 
 
 def run():
@@ -59,24 +51,19 @@ def run():
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
-    parser_use = subparsers.add_parser("use", help="use container/layer")
+    parser_use = subparsers.add_parser("use", help="use container")
     parser_use.add_argument("name", help="container name")
-    parser_use.add_argument("-l", "--layer")
-    parser_use.add_argument("-c", "--create")
+    parser_use.add_argument("-m", "--make")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
 
-    parser_pull = subparsers.add_parser("pull")
-    parser_pull.add_argument("name", help="container name")
-    parser_pull.add_argument("-l", "--layer")
-    parser_pull.add_argument("-o", "--over")  # default container .main
-
-    parser_drop = subparsers.add_parser("drop", help="remove container/layer")
+    parser_drop = subparsers.add_parser("drop", help="remove container")
     parser_drop.add_argument("name", help="container name")
-    parser_drop.add_argument("-l", "--layer")
 
     parser_list = subparsers.add_parser("list", help="list rez containers")
-    parser_list.add_argument("name", help="container name")  # "*" to list all
-    parser_list.add_argument("-l", "--layer")  # "*" to list all
+    parser_list.add_argument("name", help="container name")
+
+    # TODO: able to *pull* revision from container to another
+    # TODO: an interface to pin/tag container revision (if needed)
 
     # for fast access
     if len(sys.argv) == 1:
@@ -91,10 +78,6 @@ def run():
     if opts.cmd == "use":
         container = Container(opts.name)
         cmd_use(container, job=opts.do)
-
-    elif opts.cmd == "add":
-        container = Container(opts.name)
-        cmd_add(container, force=opts.force)
 
     elif opts.cmd == "drop":
         container = Container(opts.name)

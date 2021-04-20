@@ -8,7 +8,7 @@ import sys
 from .container import Container
 
 container = Container.create("hello")
-layer = container.get_latest_layer()
-if not layer:
-    layer = container.new_layer()
-sys.exit(layer.use())
+revision = container.get_latest_revision()
+if not revision:
+    revision = container.new_revision()
+sys.exit(revision.use())

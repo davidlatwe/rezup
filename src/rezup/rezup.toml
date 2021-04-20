@@ -1,5 +1,5 @@
 
-# default container layer recipe
+# default container revision recipe
 version = "1.0"
 
 [rez]
