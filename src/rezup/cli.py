@@ -152,8 +152,8 @@ def cmd_drop(container):
         print("Container '%s' not exists." % container.path)
 
     # keep tidy
-    if os.path.isdir(container.root) and not os.listdir(REZUP_ROOT):
-        shutil.rmtree(container.root)
+    # if os.path.isdir(container.root) and not os.listdir(REZUP_ROOT):
+    #     shutil.rmtree(container.root)
 
 
 def cmd_inventory():

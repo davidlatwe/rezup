@@ -3,6 +3,7 @@
 version = "1.0"
 
 [rez]
+name = "rez"
 url = "rez>=2.83"
 
 # [[extension]]

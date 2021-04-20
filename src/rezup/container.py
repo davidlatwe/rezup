@@ -36,37 +36,55 @@ import virtualenv
 from distlib.scripts import ScriptMaker
 from pathlib import Path
 from datetime import datetime
-from ._vendor import toml
 
 try:
     from importlib.metadata import Distribution
 except ImportError:
     from importlib_metadata import Distribution
 
+from ._vendor import toml
+from .shell import get_current_shell, get_launch_cmd
+
 
 class ContainerError(Exception):
     pass
 
 
+# REZUP_ROOT_REMOTE
+# REZUP_ROOT_LOCAL
+# REZUP_IGNORE_REMOTE
+# REZUP_CONTAINER_PATH
+# REZUP_CONTAINER_REZ_PATH
+
+
 class Container:
-    __root = None
 
-    def __init__(self, name):
+    def __init__(self, name, root, remote=False):
+        root = Path(root)
+
+        self._remote = remote
         self._name = name
-        self._path = self.root() / name
+        self._root = root
+        self._path = root / name
 
     @classmethod
-    def root(cls):
-        if cls.__root is None:
-            cls.__root = Path(
-                os.getenv("REZUP_ROOT", os.path.expanduser("~/.rezup"))
+    def create(cls, name, remote=False):
+        if remote:
+            if "REZUP_ROOT_REMOTE" not in os.environ:
+                raise Exception("Container remote root not set, "
+                                "check $REZUP_ROOT_REMOTE")
+
+            root = Path(os.environ["REZUP_ROOT_REMOTE"])
+        else:
+            root = Path(
+                os.getenv("REZUP_ROOT_LOCAL", os.path.expanduser("~/.rezup"))
             )
-        return cls.__root
 
-    @classmethod
-    def create(cls, name):
-        os.makedirs(cls.root() / name, exist_ok=True)
-        return Container(name)
+        os.makedirs(root / name, exist_ok=True)
+        return Container(name, root, remote)
+
+    def root(self):
+        return self._root
 
     def name(self):
         return self._name
@@ -79,6 +97,9 @@ class Container:
 
     def is_empty(self):
         return not bool(next(self.iter_layers(), None))
+
+    def is_remote(self):
+        return self._remote
 
     def purge(self):
         if self.is_exists():
@@ -99,15 +120,29 @@ class Container:
             if not validate or layer.is_valid():
                 yield layer
 
-    def get_layer(self, layer_name=None, only_ready=True):
+    def get_latest_layer(self, layer_name=None, only_ready=True):
         layer_name = layer_name or Layer.DEFAULT_NAME
         for layer in self.iter_layers():
             if (layer.name() == layer_name
                     and (not only_ready or layer.is_ready())):
                 return layer
 
-    def new_layer(self, layer_name=None, recipe_file=None):
-        return Layer.create(self, layer_name, recipe_file)
+    def get_layer_by_time(self,
+                          timestamp,
+                          strict=False,
+                          layer_name=None,
+                          only_ready=True):
+        layer_name = layer_name or Layer.DEFAULT_NAME
+        for layer in self.iter_layers():
+            if (layer.name() == layer_name
+                    and (not only_ready or layer.is_ready())):
+
+                if (layer.timestamp() == timestamp
+                        or (not strict and layer.timestamp() <= timestamp)):
+                    return layer
+
+    def new_layer(self, layer_name=None, recipe_file=None, timestamp=None):
+        return Layer.create(self, layer_name, recipe_file, timestamp)
 
 
 class Layer:
@@ -120,12 +155,17 @@ class Layer:
         self._name = None
         self._timestamp = None
         self._is_valid = None
+        self._recipe = self._path / "rezup.toml"
 
     @classmethod
-    def create(cls, container, layer_name=None, recipe_file=None):
+    def create(cls,
+               container,
+               layer_name=None,
+               recipe_file=None,
+               timestamp=None):
         layer_name = layer_name or cls.DEFAULT_NAME
-        dir_name = str(datetime.now().timestamp())
-        layer_path = container.path / dir_name
+        dir_name = str(timestamp or datetime.now().timestamp())
+        layer_path = container.path() / dir_name
         layer_file = layer_path / (layer_name + ".json")
 
         os.makedirs(layer_path, exist_ok=True)
@@ -133,23 +173,28 @@ class Layer:
             # metadata
             f.write(json.dumps({
                 "layer_name": layer_name,
-                "layer_path": layer_path,
+                "layer_path": str(layer_path),
             }, indent=4))
 
         layer = cls(dir_name, container=container)
         if not layer.is_valid():
             raise Exception("Invalid new layer, this is a bug.")
 
-        layer._install(recipe_file)
-
-        return layer
-
-    def _install(self, recipe_file=None):
+        # compose recipe
         mod_path = os.path.dirname(__file__)
         recipe = toml.load(os.path.join(mod_path, "rezup.toml"))
         if recipe_file:
             deep_update(recipe, toml.load(recipe_file))
+        # install
+        if not container.is_remote():
+            layer._install(recipe)
+        # mark as ready
+        with open(layer._recipe, "w") as f:
+            toml.dump(recipe, f)
 
+        return layer
+
+    def _install(self, recipe):
         tools = []
         installer = Installer(self)
 
@@ -160,9 +205,7 @@ class Layer:
         for tool in tools:
             installer.install(tool)
 
-        # mark as ready
-        with open(self._path / "rezup.toml", "w") as f:
-            toml.dump(recipe, f)
+        # TODO: make activators, for prompt and script run
 
     def validate(self):
         is_valid = True
@@ -170,7 +213,7 @@ class Layer:
         timestamp = datetime.fromtimestamp(seconds)
         for entry in os.scandir(self._path):
             if entry.is_file() and entry.name.endswith(".json"):
-                name = entry.name.rsplit(".json")
+                name = entry.name.rsplit(".json", 1)[0]
                 if name:
                     self._name = name
                     self._timestamp = timestamp
@@ -190,7 +233,7 @@ class Layer:
         return self._is_valid
 
     def is_ready(self):
-        return os.path.isfile(self._path / "rezup.toml")
+        return os.path.isfile(self._recipe)
 
     def name(self):
         return self._name
@@ -206,6 +249,10 @@ class Layer:
 
     def container(self):
         return self._container
+
+    def recipe(self):
+        if self.is_ready():
+            return toml.load(self._recipe)
 
     def purge(self):
         if self.is_valid():
@@ -224,10 +271,41 @@ class Layer:
                 yield layer
 
     def use(self):
-        # REZUP_CONTAINER_PATH
-        # REZUP_CONTAINER_REZ_PATH
-        # Use cmd2
-        pass
+        if not self.is_valid():
+            raise Exception("Cannot use invalid layer.")
+        if not self.is_ready():
+            raise Exception("Layer is not ready to be used.")
+
+        if self._container.is_remote():
+            # get local
+            name = self._container.name()
+            container = Container.create(name, remote=False)
+            layer = container.get_layer_by_time(self._timestamp,
+                                                strict=True,
+                                                layer_name=self._name)
+            if layer is None:
+                layer = container.new_layer(self._name,
+                                            recipe_file=self._recipe,
+                                            timestamp=self._timestamp)
+            # use local
+            layer.use()
+
+        else:
+            # Launch subprocess
+            env = os.environ.copy()
+            env["PATH"] = os.pathsep.join([
+                str(self._path / "bin"),
+                env["PATH"]
+            ])
+
+            shell_name, _ = get_current_shell()
+            cmd = get_launch_cmd(shell_name)
+
+            popen = subprocess.Popen(cmd, env=env)
+            stdout, stderr = popen.communicate()
+
+            sys.exit(popen.returncode)
+            # If non-windows, use os.execvpe for script run.
 
 
 class Tool:
@@ -244,7 +322,7 @@ class Installer:
 
     site_template = r"""# -*- coding: utf-8 -*-
 import site
-site.addsitedir("{layer}")
+site.addsitedir(r"{layer}")
 """
 
     def __init__(self, layer):
@@ -271,8 +349,8 @@ site.addsitedir("{layer}")
 
         # create venv
         args = [
-            "--python", use_python,
-            dst
+            "--python", str(use_python),
+            str(dst)
         ]
         session = virtualenv.cli_run(args)
 
@@ -312,9 +390,10 @@ site.addsitedir("{layer}")
         version_py = self._layer.path() / "rez" / "utils" / "_version.py"
 
         rez_entries = None
-        for importer, modname, _ in pkgutil.iter_modules([rez_cli]):
+        for importer, modname, _ in pkgutil.iter_modules([str(rez_cli)]):
             if modname == "_entry_points":
-                rez_entries = importer.find_module(modname).load_module(modname)
+                loader = importer.find_module(modname)
+                rez_entries = loader.load_module(modname)
                 break
 
         for file in os.listdir(bin_path):

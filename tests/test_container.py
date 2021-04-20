@@ -15,7 +15,7 @@ class TestContainer(unittest.TestCase):
 
     def setUp(self):
         root = tempfile.mkdtemp(prefix="rezup_test_")
-        os.environ["REZUP_ROOT"] = root
+        os.environ["REZUP_ROOT_LOCAL"] = root
         self.root = root
 
     def tearDown(self):

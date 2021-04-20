@@ -27,6 +27,7 @@ setup(
     install_requires=[
         "distlib",
         "virtualenv",
+        "shellingham",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
