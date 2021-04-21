@@ -1,31 +1,4 @@
-"""
-{container}/
-    |
-    +-- {timestamp}/
-    |   |   <revision>
-    :   |
-        +-- venv/
-        |   |
-        |   +-- _rez/
-        |   |   <default rez venv>
-        |   |
-        |   +-- {extension}/
-        |   |   <venv for extension that require isolation>
-        |   :
-        |
-        +-- rez, rezgui, rezplugins, .egg-info/
-        |   <rez package install, shared with all venvs>
-        |
-        +-- bin/
-        |   <all bin tools>
-        |
-        >-- rezup.toml
-        |   <recipe file>
-        |
-        >-- revision.json
-            <info of this container revision>
 
-"""
 import os
 import sys
 import json
@@ -49,10 +22,12 @@ class ContainerError(Exception):
     pass
 
 
-# REZUP_ROOT_REMOTE
-# REZUP_ROOT_LOCAL
-# REZUP_IGNORE_REMOTE
-# REZUP_CLEAN_AFTER
+# TODO:
+#   implement/document these env vars
+#   - REZUP_ROOT_REMOTE
+#   - REZUP_ROOT_LOCAL
+#   - REZUP_IGNORE_REMOTE
+#   - REZUP_CLEAN_AFTER
 
 
 class Container:
