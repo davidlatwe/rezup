@@ -13,5 +13,5 @@ if (!$env:REZUP_DISABLE_PROMPT) {
 }
 
 if ($env:__REZUP_SCRIPT__) {
-    echo "Run __REZUP_SCRIPT__"
+    & $env:__REZUP_SCRIPT__
 }

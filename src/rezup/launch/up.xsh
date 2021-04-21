@@ -4,4 +4,4 @@ if not $VIRTUAL_ENV_PROMPT:
     del $VIRTUAL_ENV_PROMPT
 
 if $__REZUP_SCRIPT__:
-    echo "Run __REZUP_SCRIPT__"
+    source $__REZUP_SCRIPT__

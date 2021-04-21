@@ -13,5 +13,6 @@ fi
 
 
 if [ -n "${__REZUP_SCRIPT__-}" ] ; then
-  echo "Run __REZUP_SCRIPT__"
+    # shellcheck source=/dev/null
+    . "${__REZUP_SCRIPT__}"
 fi

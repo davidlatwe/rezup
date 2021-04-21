@@ -31,3 +31,7 @@ unset env_name
 unset do_prompt
 
 rehash
+
+if ( $?__REZUP_SCRIPT__ ) then
+    source $__REZUP_SCRIPT__
+endif

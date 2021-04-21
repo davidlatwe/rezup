@@ -97,19 +97,19 @@ _PROMPT_CODES_CMD = {
     "linebreak": "$_",
 }
 _PROMPT_CODES_PWSH = {
-    "linebreak": " ",
+    "linebreak": "\n",
 }
 _PROMPT_CODES_CSH = {
-    "linebreak": " ",
+    "linebreak": "\n",
 }
 _PROMPT_CODES_FISH = {
-    "linebreak": " ",
+    "linebreak": "\n",
 }
 _PROMPT_CODES_SH = {
-    "linebreak": " ",
+    "linebreak": "\n",
 }
 _PROMPT_CODES_XONSH = {
-    "linebreak": " ",
+    "linebreak": "\n",
 }
 
 PROMPT_CODES = {

@@ -15,5 +15,5 @@ if test -z "$REZUP_DISABLE_PROMPT"
 end
 
 if test -n '__REZUP_SCRIPT__'
-    echo '__REZUP_PROMPT__'
+    . "${__REZUP_SCRIPT__}"
 end
