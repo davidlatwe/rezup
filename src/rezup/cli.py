@@ -3,45 +3,7 @@ import os
 import sys
 import shutil
 import argparse
-import subprocess
-from .container import Container, create_venv
-
-
-IS_WIN = sys.platform == "win32"
-
-
-class PathList(object):
-    def __init__(self, *paths):
-        self.list = [
-            os.path.normpath(os.path.normcase(p))
-            for p in paths
-        ]
-
-    def __contains__(self, item):
-        item = os.path.normpath(os.path.normcase(item))
-        return item in self.list
-
-
-def rez_env(container_path):
-    sep = os.pathsep
-    blocked = PathList(
-        # rezup
-        os.path.dirname(sys.argv[0]),
-        # exclude all pythons
-        #   this will not exclude /usr/bin/python, but if that is needed,
-        #   maybe this would help ?
-        #   https://stackoverflow.com/a/31099615/14054728
-        *find_pythons()
-    )
-
-    env = os.environ.copy()
-    env["PATH"] = sep.join([
-        p for p in env["PATH"].split(sep) if p not in blocked
-    ] + [
-        os.path.join(container_path, "bin")
-    ])
-
-    return env
+from .container import Container
 
 
 def run():
@@ -53,14 +15,19 @@ def run():
 
     parser_use = subparsers.add_parser("use", help="use container")
     parser_use.add_argument("name", help="container name")
-    parser_use.add_argument("-m", "--make")
+    parser_use.add_argument("-m", "--make",
+                            nargs="?", const=True, default=False,
+                            help="create new revision.")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
 
     parser_drop = subparsers.add_parser("drop", help="remove container")
     parser_drop.add_argument("name", help="container name")
 
     parser_list = subparsers.add_parser("list", help="list rez containers")
-    parser_list.add_argument("name", help="container name")
+    # list revisions
+    # parser_list.add_argument("name", help="container name")
+    # list from remote
+    # parser_list.add_argument("-r", "--remote")
 
     # TODO: able to *pull* revision from container to another
     # TODO: an interface to pin/tag container revision (if needed)
@@ -76,71 +43,42 @@ def run():
         sys.exit(print_info())
 
     if opts.cmd == "use":
-        container = Container(opts.name)
-        cmd_use(container, job=opts.do)
+        cmd_use(opts.name, make=opts.make, job=opts.do)
 
     elif opts.cmd == "drop":
-        container = Container(opts.name)
-        cmd_drop(container)
+        cmd_drop(opts.name)
 
     elif opts.cmd == "list":
         cmd_inventory()
 
 
-def cmd_use(container, job=None):
-    if not container.exists():
-        if container.name == ".main":
-            # for first time quick start
-            install(container)
-
-        else:
-            print("Container '%s' not exists." % container.path)
-            sys.exit(1)
-
-    env = rez_env(container.path)
-
-    cmd = get_shell()
-    cmd += [os.path.join(container.venv_bin_path, "activate")]
-
-    popen = subprocess.Popen(cmd, env=env)
-    stdout, stderr = popen.communicate()
-
-    sys.exit(popen.returncode)
-
-
-def cmd_add(container, force=False):
-    edit_mode = container.name == "live"
-
-    if container.exists():
-        if force:
-            print("Force remove container '%s'.." % container.path)
-            remove(container)
-        else:
-            print("Container '%s' already exists." % container.path)
-            sys.exit(1)
-
-    install(container, edit_mode=edit_mode)
-
-
-def cmd_drop(container):
-
-    if container.exists():
-        print("Removing existing container '%s'.." % container.path)
-        remove(container)
+def cmd_use(name, make=None, job=None):
+    if make:
+        container = Container.create(name)
+        revision = container.new_revision()
     else:
-        print("Container '%s' not exists." % container.path)
+        container = Container(name)
+        revision = container.get_latest_revision()
+        if not revision:
+            print("Container '%s' has no valid revision." % container.path())
+            sys.exit(1)
 
-    # keep tidy
-    # if os.path.isdir(container.root) and not os.listdir(REZUP_ROOT):
-    #     shutil.rmtree(container.root)
+    sys.exit(revision.use())
+
+
+def cmd_drop(name):
+    container = Container(name)
+    container.purge()
 
 
 def cmd_inventory():
-    if not os.path.isdir(REZUP_ROOT):
+    root = Container.default_root()
+
+    if not os.path.isdir(root):
         print("No container.")
         return
 
-    for name in os.listdir(REZUP_ROOT):
+    for name in os.listdir(root):
         print(name)
 
 
@@ -149,39 +87,3 @@ def cmd_inventory():
 def remove(container):
     print("Deleting %s" % container.path)
     shutil.rmtree(container.path)
-
-
-def install(container, edit_mode=False, use_python=None):
-
-    # create venv
-    venv_python = create_venv(container, use_python=use_python)
-
-    cmd = [venv_python, "-m", "pip", "install"]
-
-    if is_rez_repo():
-        if edit_mode:
-            cmd.append("-e")
-        cmd.append(".")
-    else:
-        cmd.append("rez")  # from pypi
-
-    # don't make noise
-    cmd.append("--disable-pip-version-check")
-
-    cmd += ["--target", container.path]
-
-    print("Installing container..")
-    subprocess.check_output(cmd)
-
-    post_install(container.path)
-
-
-def find_pythons():
-    ext = ".exe" if IS_WIN else ""
-
-    for path in os.environ["PATH"].split(os.pathsep):
-        python_exe = os.path.join(path, "python" + ext)
-        if path == "/usr/bin":
-            continue
-        if os.access(python_exe, os.X_OK):
-            yield path

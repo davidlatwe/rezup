@@ -59,8 +59,8 @@ class ContainerError(Exception):
 
 class Container:
 
-    def __init__(self, name, root, is_remote=False):
-        root = Path(root)
+    def __init__(self, name, root=None, is_remote=False):
+        root = Path(root) if root else self.default_root()
 
         self._remote = is_remote
         self._name = name
@@ -68,20 +68,20 @@ class Container:
         self._path = root / name
 
     @classmethod
-    def create(cls, name, root=None, is_remote=False):
+    def default_root(cls, is_remote=False):
         if is_remote:
-            if root:
-                root = Path(root)
-            elif "REZUP_ROOT_REMOTE" in os.environ:
-                root = Path(os.environ["REZUP_ROOT_REMOTE"])
-            else:
+            if "REZUP_ROOT_REMOTE" not in os.environ:
                 raise Exception("Remote root not not provided.")
+            else:
+                return Path(os.environ["REZUP_ROOT_REMOTE"])
         else:
-            root = Path(
-                root or
+            return Path(
                 os.getenv("REZUP_ROOT_LOCAL", os.path.expanduser("~/.rezup"))
             )
 
+    @classmethod
+    def create(cls, name, root=None, is_remote=False):
+        root = Path(root) if root else cls.default_root(is_remote)
         os.makedirs(root / name, exist_ok=True)
         return Container(name, root, is_remote)
 
@@ -105,7 +105,14 @@ class Container:
 
     def purge(self):
         if self.is_exists():
-            shutil.rmtree(self._path)
+            revision = self.get_latest_revision(only_ready=False)
+            if not revision:
+                shutil.rmtree(self._path)
+            else:
+                # TODO: should have better exception type
+                # TODO: need to check revision is in use
+                raise Exception("Revision is creating.")
+
         # keep tidy, try remove the root of containers if it's now empty
         root = self.root()
         if os.path.isdir(root) and not os.listdir(root):
@@ -262,7 +269,7 @@ class Revision:
             if revision is None:
                 revision = container.new_revision(self._recipe, self._timestamp)
             # use local
-            revision.use()
+            return revision.use()
 
         else:
             # Launch subprocess
@@ -271,6 +278,7 @@ class Revision:
                 str(self._path / "bin"),
                 env["PATH"]
             ])
+            # use `pythonfinder` package if need to exclude python from PATH
 
             shell_name, _ = get_current_shell()
             cmd = get_launch_cmd(shell_name)
@@ -278,8 +286,7 @@ class Revision:
             popen = subprocess.Popen(cmd, env=env)
             stdout, stderr = popen.communicate()
 
-            sys.exit(popen.returncode)
-            # If non-windows, use os.execvpe for script run.
+            return popen.returncode
 
 
 class Tool:
