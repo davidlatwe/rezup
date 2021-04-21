@@ -175,8 +175,10 @@ class Revision:
             raise Exception("Invalid new revision, this is a bug.")
 
         # compose recipe
-        mod_path = os.path.dirname(__file__)
-        recipe = toml.load(os.path.join(mod_path, "rezup.toml"))
+        recipe = toml.load(Path(os.path.dirname(__file__)) / "rezup.toml")
+        user_recipe_file = os.path.expanduser("~/rezup.toml")
+        if not recipe_file and os.path.isfile(user_recipe_file):
+            recipe_file = user_recipe_file
         if recipe_file:
             deep_update(recipe, toml.load(recipe_file))
         # install

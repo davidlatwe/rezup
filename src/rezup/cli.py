@@ -14,7 +14,8 @@ def run():
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
     parser_use = subparsers.add_parser("use", help="use container")
-    parser_use.add_argument("name", help="container name")
+    parser_use.add_argument("name", nargs="?", default=".main",
+                            help="container name. default: '.main'")
     parser_use.add_argument("-m", "--make",
                             nargs="?", const=True, default=False,
                             help="create new revision.")
@@ -54,14 +55,21 @@ def run():
 
 def cmd_use(name, make=None, job=None):
     if make:
+        recipe = None if isinstance(make, bool) else make
         container = Container.create(name)
-        revision = container.new_revision()
+        revision = container.new_revision(recipe_file=recipe)
     else:
         container = Container(name)
         revision = container.get_latest_revision()
         if not revision:
-            print("Container '%s' has no valid revision." % container.path())
-            sys.exit(1)
+            if container.name() == ".main" and not container.is_exists():
+                # for quick first run
+                print("Creating container automatically for first run..")
+                revision = container.new_revision()
+            else:
+                print("Container '%s' exists but has no valid revision: %s"
+                      % (container.name(), container.path()))
+                sys.exit(1)
 
     sys.exit(revision.use())
 

@@ -1,6 +1,6 @@
 
-# default container revision recipe
-version = "1.0"
+description = "default container revision recipe"
+schema = "rezup-recipe:1.0"
 
 [rez]
 name = "rez"
