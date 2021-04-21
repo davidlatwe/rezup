@@ -1,0 +1,5 @@
+
+recursive-include *LICENSE* *.txt *.md *.rst
+include pyproject.toml
+include src/rezup/rezup.toml
+include src/rezup/launch/up.*

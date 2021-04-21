@@ -10,7 +10,7 @@ pip install rezup
 
 ### Usage
 
-use default, if container default not exists, get rez from pypi
+use default container `.main`
 ```
 $ rezup
 ```
@@ -22,22 +22,17 @@ $ rezup use foo
 
 use foo and do job
 ```
-$ rezup use foo --do job
+$ rezup use foo --do {script.bat}
 ```
 
-install rez into container default
+install rez into default container
 ```
-$ rezup add
+$ rezup use --make {rezup.toml}
 ```
 
 install rez into container foo
 ```
-$ rezup add foo
-```
-
-install rez into container live, which will be in edit mode
-```
-$ rezup add live
+$ rezup use foo --make {rezup.toml}
 ```
 
 remove container foo
