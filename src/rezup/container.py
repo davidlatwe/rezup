@@ -30,7 +30,6 @@ import os
 import sys
 import json
 import shutil
-import pkgutil
 import subprocess
 import virtualenv
 from distlib.scripts import ScriptMaker
@@ -303,26 +302,27 @@ class Tool:
 
 class Installer:
 
-    site_template = r"""# -*- coding: utf-8 -*-
-import site
-site.addsitedir(r"{revision}")
-"""
-
     def __init__(self, revision):
         self._container = revision.container()
         self._revision = revision
         self._default_venv = None
+        self._shared_tools = list()
 
     def install(self, tool):
         if tool.isolation or tool.name == "rez":
             venv_session = self.create_venv(tool)
             if tool.name == "rez":
                 self._default_venv = venv_session
+                self._shared_tools.append(tool)
         else:
             venv_session = self._default_venv
 
         if venv_session is None:
             raise Exception("No python venv created, this is a bug.")
+
+        if venv_session is not self._default_venv:
+            for shared in self._shared_tools:
+                self.install_package(shared, venv_session)
 
         self.install_package(tool, venv_session)
 
@@ -337,12 +337,6 @@ site.addsitedir(r"{revision}")
         ]
         session = virtualenv.cli_run(args)
 
-        # add sitecustomize.py
-        site_script = session.creator.purelib / "sitecustomize.py"
-        sitecustomize = self.site_template.format(revision=self._revision.path())
-        with open(site_script, "w") as f:
-            f.write(sitecustomize)
-
         return session
 
     def install_package(self, tool, venv_session):
@@ -350,68 +344,65 @@ site.addsitedir(r"{revision}")
         cmd = [python_exec, "-m", "pip", "install"]
 
         if tool.edit:
-            cmd.append("-e")
-        cmd.append(tool.url)
+            cmd += ["--editable", tool.url]
+        else:
+            cmd.append(tool.url)
 
-        # don't make noise
-        cmd.append("--disable-pip-version-check")
-
-        if tool.name == "rez":
-            cmd += ["--target", str(self._revision.path())]
+        cmd += [
+            # don't make noise
+            "--disable-pip-version-check",
+        ]
 
         print("Installing %s.." % tool.name)
         subprocess.check_output(cmd)
 
+        self.create_production_scripts(tool, venv_session)
         if tool.name == "rez":
-            self.rez_production_install(tool, venv_session)
-        else:
-            self.create_production_scripts(tool, venv_session)
+            self.mark_as_rez_production_install(tool, venv_session)
 
-    def rez_production_install(self, tool, venv_session):
-        bin_path = self._revision.path() / "bin"
-        rez_cli = self._revision.path() / "rez" / "cli"
-        version_py = self._revision.path() / "rez" / "utils" / "_version.py"
+    def mark_as_rez_production_install(self, tool, venv_session):
+        validator = self._revision.path() / "bin" / ".rez_production_install"
+        version_py = (
+            Path(tool.url) / "src" if tool.edit
+            else venv_session.creator.purelib  # site-packages
+        ) / "rez" / "utils" / "_version.py"
 
-        rez_entries = None
-        for importer, modname, _ in pkgutil.iter_modules([str(rez_cli)]):
-            if modname == "_entry_points":
-                loader = importer.find_module(modname)
-                rez_entries = loader.load_module(modname)
-                break
-
-        for file in os.listdir(bin_path):
-            os.remove(bin_path / file)
-        specifications = rez_entries.get_specifications().values()
-        self.create_production_scripts(tool, venv_session, specifications)
-
-        # mark as production install
         _locals = {"_rez_version": ""}
         with open(version_py) as f:
             exec(f.read(), globals(), _locals)
-        with open(bin_path / ".rez_production_install", "w") as f:
+        with open(validator, "w") as f:
             f.write(_locals["_rez_version"])
 
     def create_production_scripts(self,
                                   tool,
-                                  venv_session,
-                                  specifications=None):
+                                  venv_session):
         """Create Rez production used binary scripts
 
         The binary script will be executed with Python interpreter flag -E,
         which will ignore all PYTHON* env vars, e.g. PYTHONPATH and PYTHONHOME.
 
         """
-        if specifications is None:
-            site_packages = str(venv_session.creator.purelib)
-            dists = Distribution.discover(name=tool.name, path=[site_packages])
-            specifications = [
-                f"{ep.name} = {ep.value}"
-                for dist in dists
-                for ep in dist.entry_points
-                if ep.group == "console_scripts"
-            ]
+        site_packages = venv_session.creator.purelib
+
+        if tool.edit:
+            egg_link = site_packages / ("%s.egg-link" % tool.name)
+            with open(egg_link, "r") as f:
+                package_location = f.readline().strip()
+            path = [str(package_location)]
+        else:
+            path = [str(site_packages)]
+
+        dists = Distribution.discover(name=tool.name, path=path)
+        specifications = [
+            f"{ep.name} = {ep.value}"
+            for dist in dists
+            for ep in dist.entry_points
+            if ep.group == "console_scripts"
+        ]
 
         bin_path = self._revision.path() / "bin"
+        if not bin_path.is_dir():
+            os.makedirs(bin_path)
 
         maker = ScriptMaker(source_dir=None, target_dir=bin_path)
         maker.executable = str(venv_session.creator.exe)
