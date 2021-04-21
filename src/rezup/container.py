@@ -52,8 +52,7 @@ class ContainerError(Exception):
 # REZUP_ROOT_REMOTE
 # REZUP_ROOT_LOCAL
 # REZUP_IGNORE_REMOTE
-# REZUP_CONTAINER_PATH
-# REZUP_CONTAINER_REZ_PATH
+# REZUP_CLEAN_AFTER
 
 
 class Container:
@@ -106,6 +105,8 @@ class Container:
         if self.is_exists():
             revision = self.get_latest_revision(only_ready=False)
             if not revision:
+                # TODO: don't remove it immediately, mark as purged and
+                #   remove it when $REZUP_CLEAN_AFTER meet
                 shutil.rmtree(self._path)
             else:
                 # TODO: should have better exception type
@@ -253,6 +254,8 @@ class Revision:
 
     def purge(self):
         if self.is_valid():
+            # TODO: don't remove it immediately, mark as purged and
+            #   remove it when $REZUP_CLEAN_AFTER meet
             shutil.rmtree(self._path)
 
     def iter_backward(self):
