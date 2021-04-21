@@ -1,7 +1,6 @@
 
 import os
 import sys
-import shutil
 import argparse
 from .container import Container
 
@@ -71,7 +70,7 @@ def cmd_use(name, make=None, job=None):
                       % (container.name(), container.path()))
                 sys.exit(1)
 
-    sys.exit(revision.use())
+    sys.exit(revision.use(run_script=job))
 
 
 def cmd_drop(name):
@@ -88,10 +87,3 @@ def cmd_inventory():
 
     for name in os.listdir(root):
         print(name)
-
-
-# helpers
-
-def remove(container):
-    print("Deleting %s" % container.path)
-    shutil.rmtree(container.path)

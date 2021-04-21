@@ -8,5 +8,5 @@ if not defined REZUP_DISABLE_PROMPT (
 )
 
 if defined __REZUP_SCRIPT__ (
-    call __REZUP_SCRIPT__
+    call %__REZUP_SCRIPT__%
 )

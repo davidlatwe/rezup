@@ -42,7 +42,7 @@ except ImportError:
     from importlib_metadata import Distribution
 
 from ._vendor import toml
-from .shell import get_current_shell, get_launch_cmd
+from .launch import shell
 
 
 class ContainerError(Exception):
@@ -200,7 +200,17 @@ class Revision:
         for tool in tools:
             installer.install(tool)
 
-        # TODO: make activators, for prompt and script run
+        # make launch scripts, for prompt and job run
+        _con_name = self._container.name()
+        _rez_ver = installer.installed_rez_version() or "unknown"
+        _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
+        _prompt_info = (_con_name, _rez_ver, _revision_date)
+        prompt_string = "(%s) - Rez %s - %s{linebreak}" % _prompt_info
+
+        replacements = {
+            "__REZUP_PROMPT__": prompt_string,
+        }
+        shell.generate_launch_script(self._path, replacements)
 
     def validate(self):
         is_valid = True
@@ -255,7 +265,7 @@ class Revision:
             if revision.timestamp() > self._timestamp:
                 yield revision
 
-    def use(self):
+    def use(self, run_script=None):
         if not self.is_valid():
             raise Exception("Cannot use invalid revision.")
         if not self.is_ready():
@@ -281,8 +291,14 @@ class Revision:
             ])
             # use `pythonfinder` package if need to exclude python from PATH
 
-            shell_name, _ = get_current_shell()
-            cmd = get_launch_cmd(shell_name)
+            if run_script:
+                env["__REZUP_SCRIPT__"] = run_script
+                block = False
+            else:
+                block = True
+
+            shell_name, _ = shell.get_current_shell()
+            cmd = shell.get_launch_cmd(shell_name, self._path, block=block)
 
             popen = subprocess.Popen(cmd, env=env)
             stdout, stderr = popen.communicate()
@@ -307,6 +323,10 @@ class Installer:
         self._revision = revision
         self._default_venv = None
         self._shared_tools = list()
+        self._rez_version = None
+
+    def installed_rez_version(self):
+        return self._rez_version
 
     def install(self, tool):
         if tool.isolation or tool.name == "rez":
@@ -372,6 +392,8 @@ class Installer:
             exec(f.read(), globals(), _locals)
         with open(validator, "w") as f:
             f.write(_locals["_rez_version"])
+
+        self._rez_version = _locals["_rez_version"]
 
     def create_production_scripts(self,
                                   tool,
