@@ -7,6 +7,6 @@ if not defined REZUP_DISABLE_PROMPT (
     set "PROMPT=__REZUP_PROMPT__%PROMPT%"
 )
 
-if defined __REZUP_SCRIPT__ (
-    call %__REZUP_SCRIPT__%
+if defined __REZUP_RUN_SCRIPT__ (
+    call "__REZUP_SCRIPT__"
 )
