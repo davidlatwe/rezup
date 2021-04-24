@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import shutil
+import tempfile
 import subprocess
 import virtualenv
 from io import StringIO
@@ -364,14 +365,38 @@ class Revision:
             ])
             # use `pythonfinder` package if need to exclude python from PATH
 
+            shell_name, shell_exec = shell.get_current_shell()
+            # shell exec path could be None if not been detected
+            shell_exec = shell_exec or shell_name
+
             if run_script:
-                env["__REZUP_SCRIPT__"] = os.path.abspath(run_script)
+                env["__REZUP_RUN_SCRIPT__"] = "1"
+                run_script = os.path.abspath(run_script)
                 block = False
             else:
+                env.pop("__REZUP_RUN_SCRIPT__", None)
+                run_script = ""
                 block = True
 
-            shell_name, _ = shell.get_current_shell()
-            cmd = shell.get_launch_cmd(shell_name, self._path, block=block)
+            # make launch scripts, for prompt and job run
+            _con_name = self._container.name()
+            _rez_ver = self.get_rez_version()
+            _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
+            _prompt_info = (_con_name, _rez_ver, _revision_date)
+            prompt_string = "(%s) - Rez %s - %s{linebreak}" % _prompt_info
+            replacements = {
+                "__REZUP_PROMPT__": prompt_string,
+                "__REZUP_SCRIPT__": run_script,
+                "__REZUP_SHELL__": shell_exec,
+            }
+            temp_dir = Path(tempfile.mkdtemp())
+            launch_script = shell.generate_launch_script(shell_name,
+                                                         temp_dir,
+                                                         replacements)
+            cmd = shell.get_launch_cmd(shell_name,
+                                       shell_exec,
+                                       launch_script,
+                                       block=block)
 
             popen = subprocess.Popen(cmd, env=env)
             stdout, stderr = popen.communicate()

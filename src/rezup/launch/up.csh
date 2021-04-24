@@ -32,6 +32,10 @@ unset do_prompt
 
 rehash
 
-if ( $?__REZUP_SCRIPT__ ) then
-    source $__REZUP_SCRIPT__
+if ( $?__REZUP_RUN_SCRIPT__ ) then
+    source "__REZUP_SCRIPT__"
+else
+    __REZUP_SHELL__
 endif
+
+exit $?
