@@ -4,25 +4,13 @@ import shellingham
 from pathlib import Path
 
 
-# this shell name list is copied from shellingham,
-# just for referencing.
-SHELL_NAMES = (
-    {"sh", "bash", "dash", "ash"}  # Bourne.
-    | {"csh", "tcsh"}  # C.
-    | {"ksh", "zsh", "fish"}  # Common alternatives.
-    | {"cmd", "powershell", "pwsh"}  # Microsoft.
-    | {"elvish", "xonsh"}  # More exotic.
-)
-
 # the script files are modified from virtualenv,
 # not all shells been tested.
 LAUNCH_SCRIPTS = {
     "up.bat": ["cmd"],
     "up.csh": ["csh", "tcsh"],
-    "up.fish": ["fish"],
     "up.ps1": ["pwsh", "powershell"],
     "up.sh": ["sh", "bash", "zsh"],
-    "up.xsh": ["xonsh"],
 }
 
 
@@ -108,13 +96,7 @@ _PROMPT_CODES_PWSH = {
 _PROMPT_CODES_CSH = {
     "linebreak": "\n",
 }
-_PROMPT_CODES_FISH = {
-    "linebreak": "\n",
-}
 _PROMPT_CODES_SH = {
-    "linebreak": "\n",
-}
-_PROMPT_CODES_XONSH = {
     "linebreak": "\n",
 }
 
@@ -122,7 +104,5 @@ PROMPT_CODES = {
     "cmd": _PROMPT_CODES_CMD,
     "pwsh": _PROMPT_CODES_PWSH,
     "csh": _PROMPT_CODES_CSH,
-    "fish": _PROMPT_CODES_FISH,
     "sh": _PROMPT_CODES_SH,
-    "xonsh": _PROMPT_CODES_XONSH,
 }
