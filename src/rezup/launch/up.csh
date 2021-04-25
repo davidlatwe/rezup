@@ -38,4 +38,4 @@ else
     __REZUP_SHELL__
 endif
 
-exit $?
+exit $status
