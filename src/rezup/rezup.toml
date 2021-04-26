@@ -5,17 +5,3 @@ schema = "rezup-recipe:1.0"
 [rez]
 name = "rez"
 url = "rez>=2.83"
-
-# [[extension]]
-# name = "foo"
-# url = "~/dev/foo"
-# edit = true
-
-# [[extension]]
-# name = "bar"
-# url = "git+git://github.com/get-bar/bar"
-# isolation = true
-# python = 2.7
-
-# [env]
-# MY_ENV_VAR = 1

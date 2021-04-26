@@ -166,11 +166,32 @@ class Revision:
         return revision
 
     def _install(self, recipe):
+        """
+        Example recipe file `rezup.toml`
+
+            description = "My rez setup"
+
+            [rez]
+            name = "rez"
+            url = "rez>=2.83"
+
+            [[extension]]
+            name = "foo"
+            url = "~/dev/foo"
+            edit = true
+
+            [[extension]]
+            name = "bar"
+            url = "git+git://github.com/get-bar/bar"
+            isolation = true
+            python = 2.7
+
+        """
         tools = []
         installer = Installer(self)
 
         tools.append(Tool(recipe["rez"]))
-        for data in recipe.get("extensions", []):
+        for data in recipe.get("extension", []):
             tools.append(Tool(data))
 
         for tool in tools:
