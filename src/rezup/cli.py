@@ -60,17 +60,27 @@ def cmd_use(name, make=None, job=None):
     else:
         container = Container(name)
         revision = container.get_latest_revision()
+
         if not revision:
-            if container.name() == ".main" and not container.is_exists():
-                # for quick first run
-                print("Creating container automatically for first run..")
-                revision = container.new_revision()
-            else:
+            if container.is_exists():
                 print("Container '%s' exists but has no valid revision: %s"
                       % (container.name(), container.path()))
                 sys.exit(1)
 
-    sys.exit(revision.use(run_script=job))
+            elif container.name() != ".main":
+                print("Container '%s' not exist, use --make to create."
+                      % container.name())
+                sys.exit(1)
+
+            else:
+                # for quick first run
+                print("Creating default container automatically for first "
+                      "run..")
+                revision = container.new_revision()
+
+    sys.exit(
+        revision.use(run_script=job)
+    )
 
 
 def cmd_drop(name):
