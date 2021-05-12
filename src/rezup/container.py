@@ -101,6 +101,8 @@ class Container:
             return
 
         revisions_root = Revision.compose_path(container=self)
+        if not revisions_root.is_dir():
+            return
 
         for entry in sorted(os.listdir(revisions_root), reverse=latest_first):
             if not os.path.isdir(revisions_root / entry):

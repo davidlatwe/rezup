@@ -45,3 +45,4 @@ class TestContainer(unittest.TestCase):
         expected_path = os.path.join(self.root, "foo")
         self.assertTrue(os.path.isdir(expected_path))
         self.assertTrue(container.is_exists())
+        self.assertTrue(container.is_empty())
