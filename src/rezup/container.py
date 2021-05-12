@@ -5,9 +5,12 @@ import json
 import shutil
 import subprocess
 import virtualenv
-from distlib.scripts import ScriptMaker
+from io import StringIO
 from pathlib import Path
 from datetime import datetime
+from dotenv import dotenv_values
+from configparser import ConfigParser
+from distlib.scripts import ScriptMaker
 
 try:
     from importlib.metadata import Distribution
@@ -150,16 +153,19 @@ class Revision:
             raise Exception("Invalid new revision, this is a bug.")
 
         # compose recipe
+        #
         recipe = toml.load(Path(os.path.dirname(__file__)) / "rezup.toml")
-        user_recipe_file = os.path.expanduser("~/rezup.toml")
-        if not recipe_file and os.path.isfile(user_recipe_file):
-            recipe_file = user_recipe_file
-        if recipe_file:
+        recipe_file = recipe_file or os.path.expanduser("~/rezup.toml")
+        if os.path.isfile(recipe_file):
             deep_update(recipe, toml.load(recipe_file))
+
         # install
+        #
         if not container.is_remote():
             revision._install(recipe)
-        # mark as ready
+
+        # save recipe, mark as ready
+        #
         with open(revision._recipe, "w") as f:
             toml.dump(recipe, f)
 
@@ -248,6 +254,23 @@ class Revision:
         if self.is_ready():
             return toml.load(self._recipe)
 
+    def recipe_env(self):
+        recipe_env = (self.recipe() or {}).get("env")
+        if not recipe_env:
+            return
+
+        buffer = StringIO()
+        parsed_recipe_env = ConfigParser(recipe_env)
+        parsed_recipe_env.write(buffer)
+
+        buffer.seek(0)  # must reset buffer
+        recipe_env_dict = dotenv_values(buffer)
+
+        return {
+            k: v for k, v in recipe_env_dict.items()
+            if v is not None  # exclude config section line
+        }
+
     def purge(self):
         if self.is_valid():
             # TODO: don't remove it immediately, mark as purged and
@@ -283,7 +306,8 @@ class Revision:
 
         else:
             # Launch subprocess
-            env = os.environ.copy()
+
+            env = self._compose_env()
             env["PATH"] = os.pathsep.join([
                 str(self._path / "bin"),
                 env["PATH"]
@@ -303,6 +327,11 @@ class Revision:
             stdout, stderr = popen.communicate()
 
             return popen.returncode
+
+    def _compose_env(self):
+        env = os.environ.copy()
+        env.update(self.recipe_env() or {})
+        return env
 
 
 class Tool:
