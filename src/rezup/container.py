@@ -99,8 +99,11 @@ class Container:
     def iter_revision(self, validate=True, latest_first=True):
         if not self.is_exists():
             return
-        for entry in sorted(os.listdir(self._path), reverse=latest_first):
-            if not os.path.isdir(self._path / entry):
+
+        revisions_root = Revision.compose_path(container=self)
+
+        for entry in sorted(os.listdir(revisions_root), reverse=latest_first):
+            if not os.path.isdir(revisions_root / entry):
                 continue
 
             revision = Revision(entry, container=self)
@@ -128,15 +131,22 @@ class Revision:
     def __init__(self, dirname, container):
         self._container = container
         self._dirname = dirname
-        self._path = container.path() / dirname
+        self._path = self.compose_path(container, dirname)
         self._timestamp = None
         self._is_valid = None
         self._recipe = self._path / "rezup.toml"
 
     @classmethod
+    def compose_path(cls, container, dirname=None):
+        path = container.path() / "revisions"
+        if dirname:
+            path /= dirname
+        return path
+
+    @classmethod
     def create(cls, container, recipe_file=None, timestamp=None):
         dir_name = str(timestamp or datetime.now().timestamp())
-        revision_path = container.path() / dir_name
+        revision_path = cls.compose_path(container, dir_name)
         revision_file = revision_path / "revision.json"
 
         os.makedirs(revision_path, exist_ok=True)
