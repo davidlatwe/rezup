@@ -1,43 +1,28 @@
 
 import os
-import time
-import shutil
-import unittest
-import tempfile
 from rezup.container import Container
+from rezup._vendor import toml
+from .util import TestBase
 
 
-class TestContainer(unittest.TestCase):
+class TestContainer(TestBase):
 
     def __init__(self, *nargs, **kwargs):
         super(TestContainer, self).__init__(*nargs, **kwargs)
-        self.root = None
+        self.rezup_toml = None
+        self.recipe = {
+            "rez": {
+                "name": "rez",
+                "url": os.path.join(self.test_dir, "mock", "rez"),
+            }
+        }
 
     def setUp(self):
-        root = tempfile.mkdtemp(prefix="rezup_test_")
-        os.environ["REZUP_ROOT_LOCAL"] = root
-        self.root = root
+        super(TestContainer, self).setUp()
+        self.rezup_toml = os.path.join(self.base, "rezup.toml")
 
-    def tearDown(self):
-        if os.getenv("REZUP_TEST_KEEP_TMP"):
-            print("Tempdir kept due to $REZUP_TEST_KEEP_TMP: %s" % self.root)
-            return
-
-        # The retries are here because there is at least one case in the
-        # tests where a subproc can be writing to files in a tmpdir after
-        # the tests are completed (this is the rez-pkg-cache proc in the
-        # test_package_cache:test_caching_on_resolve test).
-        #
-        retries = 5
-
-        if os.path.exists(self.root):
-            for i in range(retries):
-                try:
-                    shutil.rmtree(self.root)
-                    break
-                except Exception:
-                    if i < (retries - 1):
-                        time.sleep(0.2)
+        with open(self.rezup_toml, "w") as f:
+            toml.dump(self.recipe, f)
 
     def test_create(self):
         container = Container.create("foo")
@@ -46,3 +31,10 @@ class TestContainer(unittest.TestCase):
         self.assertTrue(os.path.isdir(expected_path))
         self.assertTrue(container.is_exists())
         self.assertTrue(container.is_empty())
+
+    def test_create_revision(self):
+        container = Container.create("foo")
+        revision = container.new_revision(recipe_file=self.rezup_toml)
+
+        self.assertTrue(revision.is_valid())
+        self.assertTrue(revision.is_ready())
