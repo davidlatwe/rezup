@@ -13,7 +13,7 @@ from configparser import ConfigParser
 from distlib.scripts import ScriptMaker
 
 try:
-    from importlib.metadata import Distribution
+    from importlib.metadata import Distribution  # noqa
 except ImportError:
     from importlib_metadata import Distribution
 
@@ -276,7 +276,7 @@ class Revision:
         parsed_recipe_env.write(buffer)
 
         buffer.seek(0)  # must reset buffer
-        recipe_env_dict = dotenv_values(buffer)
+        recipe_env_dict = dotenv_values(buffer)  # noqa
 
         return {
             k: v for k, v in recipe_env_dict.items()
