@@ -27,39 +27,43 @@ class ContainerError(Exception):
 
 # TODO:
 #   implement/document these env vars
-#   - REZUP_ROOT_REMOTE
-#   - REZUP_ROOT_LOCAL
-#   - REZUP_IGNORE_REMOTE
-#   - REZUP_CLEAN_AFTER
+#   - [x] REZUP_ROOT_REMOTE
+#   - [x] REZUP_ROOT_LOCAL
+#   - [ ] REZUP_PUSH_AUTH
+#   - [ ] REZUP_IGNORE_REMOTE
+#   - [ ] REZUP_CLEAN_AFTER
 
 
 class Container:
 
-    def __init__(self, name, root=None, is_remote=False):
+    def __init__(self, name, root=None):
         root = Path(root) if root else self.default_root()
 
-        self._remote = is_remote
+        self._remote = root == self.remote_root()
         self._name = name
         self._root = root
         self._path = root / name
 
     @classmethod
-    def default_root(cls, is_remote=False):
-        if is_remote:
-            if "REZUP_ROOT_REMOTE" not in os.environ:
-                raise Exception("Remote root not not provided.")
-            else:
-                return Path(os.environ["REZUP_ROOT_REMOTE"])
-        else:
-            return Path(
-                os.getenv("REZUP_ROOT_LOCAL", os.path.expanduser("~/.rezup"))
-            )
+    def local_root(cls):
+        default = os.path.expanduser("~/.rezup")
+        from_env = os.getenv("REZUP_ROOT_LOCAL")
+        return Path(from_env or default)
 
     @classmethod
-    def create(cls, name, root=None, is_remote=False):
-        root = Path(root) if root else cls.default_root(is_remote)
+    def remote_root(cls):
+        from_env = os.getenv("REZUP_ROOT_REMOTE")
+        return Path(from_env) if from_env else None
+
+    @classmethod
+    def default_root(cls):
+        return cls.remote_root() or cls.local_root()
+
+    @classmethod
+    def create(cls, name, root=None):
+        root = Path(root) if root else cls.default_root()
         os.makedirs(root / name, exist_ok=True)
-        return Container(name, root, is_remote)
+        return Container(name, root)
 
     def root(self):
         return self._root
@@ -108,7 +112,7 @@ class Container:
             if not os.path.isdir(revisions_root / entry):
                 continue
 
-            revision = Revision(entry, container=self)
+            revision = Revision(container=self, dirname=entry)
             if not validate or revision.is_valid():
                 yield revision
 
@@ -124,19 +128,22 @@ class Container:
                         or (not strict and revision.timestamp() <= timestamp)):
                     return revision
 
-    def new_revision(self, recipe_file=None, timestamp=None):
-        return Revision.create(self, recipe_file, timestamp)
+    def new_revision(self, recipe_file=None):
+        return Revision.create(self, recipe_file)
 
 
 class Revision:
 
-    def __init__(self, dirname, container):
+    def __init__(self, container, dirname=None):
+        dirname = str(dirname or datetime.now().timestamp())
+
         self._container = container
         self._dirname = dirname
         self._path = self.compose_path(container, dirname)
         self._timestamp = None
         self._is_valid = None
         self._recipe = self._path / "rezup.toml"
+        self._metadata = self._path / "revision.json"
 
     @classmethod
     def compose_path(cls, container, dirname=None):
@@ -146,22 +153,23 @@ class Revision:
         return path
 
     @classmethod
-    def create(cls, container, recipe_file=None, timestamp=None):
-        dir_name = str(timestamp or datetime.now().timestamp())
-        revision_path = cls.compose_path(container, dir_name)
-        revision_file = revision_path / "revision.json"
+    def create(cls, container, recipe_file=None):
+        revision = cls(container=container)
+        revision._write(recipe_file)
+        return revision
 
-        os.makedirs(revision_path, exist_ok=True)
-        with open(revision_file, "w") as f:
+    def _write(self, recipe_file):
+        os.makedirs(self._path, exist_ok=True)
+
+        with open(self._metadata, "w") as f:
             # metadata
             f.write(json.dumps({
                 # "creator":
                 # "hostname":
-                "revision_path": str(revision_path),
+                "revision_path": str(self._path),
             }, indent=4))
 
-        revision = cls(dir_name, container=container)
-        if not revision.is_valid():
+        if not self.is_valid():
             raise Exception("Invalid new revision, this is a bug.")
 
         # compose recipe
@@ -173,15 +181,13 @@ class Revision:
 
         # install
         #
-        if not container.is_remote():
-            revision._install(recipe)
+        if not self._container.is_remote():
+            self._install(recipe)
 
         # save recipe, mark as ready
         #
-        with open(revision._recipe, "w") as f:
+        with open(self._recipe, "w") as f:
             toml.dump(recipe, f)
-
-        return revision
 
     def _install(self, recipe):
         """
@@ -231,7 +237,7 @@ class Revision:
         is_valid = True
         seconds = float(self._dirname)
         timestamp = datetime.fromtimestamp(seconds)
-        if os.path.isfile(self._path / "revision.json"):
+        if os.path.isfile(self._metadata):
             self._timestamp = timestamp
         else:
             is_valid = False
@@ -249,6 +255,9 @@ class Revision:
 
     def is_ready(self):
         return os.path.isfile(self._recipe)
+
+    def is_remote(self):
+        return self._container.is_remote()
 
     def dirname(self):
         return self._dirname
@@ -299,21 +308,29 @@ class Revision:
             if revision.timestamp() > self._timestamp:
                 yield revision
 
+    def pull(self):
+        if not self.is_remote():
+            raise Exception("Cannot pull revision from local container.")
+
+        # get local
+        name = self._container.name()
+        local = Container.create(name, root=Container.local_root())
+        revision = local.get_revision_at_time(self._timestamp, strict=True)
+        if revision is None:
+            revision = Revision(container=local, dirname=self._dirname)
+            revision._write(self._recipe)
+
+        return revision
+
     def use(self, run_script=None):
         if not self.is_valid():
             raise Exception("Cannot use invalid revision.")
         if not self.is_ready():
             raise Exception("Revision is not ready to be used.")
 
-        if self._container.is_remote():
-            # get local
-            name = self._container.name()
-            container = Container.create(name, is_remote=False)
-            revision = container.get_revision_at_time(self._timestamp,
-                                                      strict=True)
-            if revision is None:
-                revision = container.new_revision(self._recipe, self._timestamp)
+        if self.is_remote():
             # use local
+            revision = self.pull()
             return revision.use()
 
         else:
