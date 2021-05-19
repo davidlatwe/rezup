@@ -35,6 +35,25 @@ class ContainerError(Exception):
 
 
 class Container:
+    """Timestamp ordered virtual environment stack
+
+    A Rez venv provider, that allows updating venv continuously without
+    affecting any existing consumer.
+
+    In filesystem, a container is a folder that has at least one Rez venv
+    installation exists, and those Rez venv folders (revisions) are named
+    by timestamp, so when the container is being asked for a venv to use,
+    the current latest available one will be sorted out.
+
+    The location of the container can be set with env var `REZUP_ROOT_LOCAL`
+    or `~/.rezup` will be used by default.
+
+    For centralize management in production, one remote container can be
+    defined with an env var `REZUP_ROOT_REMOTE`. The remote container only
+    contains the venv installation manifest file, and when being asked, a
+    venv will be created locally or re-used if same revision exists in local.
+
+    """
 
     def __init__(self, name, root=None):
         root = Path(root) if root else self.default_root()
@@ -190,7 +209,8 @@ class Revision:
             toml.dump(recipe, f)
 
     def _install(self, recipe):
-        """
+        """Construct Rez virtual environment by recipe
+
         Example recipe file `rezup.toml`
 
             description = "My rez setup"
