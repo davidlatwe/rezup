@@ -12,6 +12,8 @@ def run():
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
+    # cmd: use
+    #
     parser_use = subparsers.add_parser("use", help="use container")
     parser_use.add_argument("name", nargs="?", default=".main",
                             help="container name. default: '.main'")
@@ -20,9 +22,13 @@ def run():
                             help="create new revision.")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
 
+    # cmd: drop
+    #
     parser_drop = subparsers.add_parser("drop", help="remove container")
     parser_drop.add_argument("name", help="container name")
 
+    # cmd: list
+    #
     parser_list = subparsers.add_parser("list", help="list rez containers")
     # list revisions
     # parser_list.add_argument("name", help="container name")
