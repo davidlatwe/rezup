@@ -20,7 +20,24 @@ $ pip install rezup
 
 By typing `rezup` in terminal, a container named `.main` will be created under `~/.rezup` by default, the root location can be changed by setting env var `REZUP_ROOT_LOCAL`. Once that command is done, vanilla Rez environment is presented by a subprocess and simply typing `exit` to escape.
 
-Each container holds at least one virtual environment folder which are named by timestamp. With that convention, latest version of environment can be provided without affecting existing user. (`Container`/`Revision` structure)
+Each container holds at least one virtual environment folder which are named by timestamp. With that convention, latest version of environment can be provided without affecting existing user.
+
+```
+# Container/Revision structure
+
+\.rezup
+   |
+   + - {container}
+   |     |
+   :     + - {revision}  # venv and bin tools lives here
+   :     |
+         + - {revision}  # the folder is named as timestamp, e.g. 1619780350.588625
+         |
+         + - {revision}  # latest one will be provided when calling `rezup use {container}` in terminal
+
+```
+
+For centralize management in production, one remote container can be defined with env var `REZUP_ROOT_REMOTE`. The remote container only contains the venv installation manifest file `rezup.toml`, and when being asked, a venv revision will be created locally or re-used if same revision exists in local.
 
 To customize environment, you can write a `~/rezup.toml` to tell what should be installed and what environment variable should have. For example :
 
