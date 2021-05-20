@@ -2,7 +2,7 @@
 import os
 import unittest
 from rezup.container import Container
-from .util import TestBase
+from tests.util import TestBase
 
 
 class TestContainer(TestBase):
