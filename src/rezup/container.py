@@ -128,9 +128,6 @@ class Container:
             return
 
         for entry in sorted(os.listdir(revisions_root), reverse=latest_first):
-            if not os.path.isdir(revisions_root / entry):
-                continue
-
             revision = Revision(container=self, dirname=entry)
             if not validate or revision.is_valid():
                 yield revision
