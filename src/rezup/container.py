@@ -17,7 +17,7 @@ try:
 except ImportError:
     from importlib_metadata import Distribution
 
-from ._vendor import toml
+from ._vendor import toml  # noqa
 from .launch import shell
 
 
