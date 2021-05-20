@@ -34,4 +34,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
+        # add conftest.py so pytest can find source, see https://stackoverflow.com/a/50610630/4145300
+        touch src/conftest.py
         pytest
