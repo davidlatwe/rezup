@@ -21,10 +21,16 @@ def run():
     parser_use = subparsers.add_parser("use", help="use container")
     parser_use.add_argument("name", nargs="?", default=".main",
                             help="container name. default: '.main'")
-    parser_use.add_argument("-m", "--make",
-                            nargs="?", const=True, default=False,
-                            help="create new revision.")
     parser_use.add_argument("-d", "--do", help="shell script. Not implemented.")
+
+    # cmd: add
+    #
+    parser_add = subparsers.add_parser("add", help="add container revision")
+    parser_add.add_argument("name", nargs="?", default=".main",
+                            help="container name. default: '.main'")
+    parser_add.add_argument("-r", "--remote", help="add a remote revision.",
+                            action="store_true")
+    parser_add.add_argument("-f", "--file", help="recipe file to make.")
 
     # cmd: drop
     #
@@ -61,7 +67,10 @@ def run():
         auto_upgrade()
 
     if opts.cmd == "use":
-        cmd_use(opts.name, make=opts.make, job=opts.do)
+        cmd_use(opts.name, job=opts.do)
+
+    if opts.cmd == "add":
+        cmd_add(opts.name, remote=opts.remote, recipe=opts.file)
 
     elif opts.cmd == "drop":
         cmd_drop(opts.name)
@@ -70,35 +79,36 @@ def run():
         cmd_inventory()
 
 
-def cmd_use(name, make=None, job=None):
-    if make:
-        recipe = None if isinstance(make, bool) else make
-        container = Container.create(name)
-        revision = container.new_revision(recipe_file=recipe)
-    else:
-        container = Container(name)
-        revision = container.get_latest_revision()
+def cmd_use(name, job=None):
+    container = Container(name)
+    revision = container.get_latest_revision()
 
-        if not revision:
-            if container.is_exists():
-                print("Container '%s' exists but has no valid revision: %s"
-                      % (container.name(), container.path()))
-                sys.exit(1)
+    if not revision:
+        if container.is_exists():
+            print("Container '%s' exists but has no valid revision: %s"
+                  % (container.name(), container.path()))
+            sys.exit(1)
 
-            elif container.name() != ".main":
-                print("Container '%s' not exist, use --make to create."
-                      % container.name())
-                sys.exit(1)
+        elif container.name() != ".main":
+            print("Container '%s' not exist, use --make to create."
+                  % container.name())
+            sys.exit(1)
 
-            else:
-                # for quick first run
-                print("Creating default container automatically for first "
-                      "run..")
-                revision = container.new_revision()
+        else:
+            # for quick first run
+            print("Creating default container automatically for first "
+                  "run..")
+            revision = container.new_revision()
 
     sys.exit(
         revision.use(run_script=job)
     )
+
+
+def cmd_add(name, remote=False, recipe=None):
+    root = Container.remote_root() if remote else Container.local_root()
+    container = Container.create(name, root=root)
+    revision = container.new_revision(recipe_file=recipe)
 
 
 def cmd_drop(name):
