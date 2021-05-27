@@ -99,7 +99,12 @@ def upgrade():
 
 
 def restart():
-    os.execv(sys.executable, sys.argv)
+    if sys.platform == "win32":
+        sys.exit(
+            subprocess.run(sys.argv).returncode
+        )
+    else:
+        os.execv(sys.argv[0], sys.argv)
 
 
 def update_record_file():
