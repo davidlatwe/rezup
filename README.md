@@ -93,19 +93,24 @@ use foo and do job
 $ rezup use foo --do {script.bat}
 ```
 
-create new venv into default container (`~/rezup.toml` will be picked)
+create & use new venv into default container (`~/rezup.toml` will be picked)
 ```
-$ rezup use --make
-```
-
-create new venv into container foo (`~/rezup.toml` will be picked)
-```
-$ rezup use foo --make
+$ rezup add
 ```
 
-create new venv into default container with specific `rezup.toml`
+create & use new venv into container foo (`~/rezup.toml` will be picked)
 ```
-$ rezup use --make {rezup.toml}
+$ rezup add foo
+```
+
+create & use new venv into default container with specific `rezup.toml`
+```
+$ rezup add --file {rezup.toml}
+```
+
+create new venv into default remote container
+```
+$ rezup add --remote --skip-use
 ```
 
 remove container foo
