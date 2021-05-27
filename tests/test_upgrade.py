@@ -60,14 +60,14 @@ class TestUpgrade(TestBase):
     @patch("rezup.upgrade.restart")
     @patch("rezup.upgrade.upgrade")
     @patch("rezup.upgrade.fetch_latest")
-    @patch("rezup.upgrade._pause_upgrade_period", 5)
+    @patch("rezup.upgrade._pause_upgrade_period", 2)
     def test_upgrade_resume(self, m_latest, m_upgrade, m_restart, m_tempdir):
         self._test_upgrade(m_latest, m_upgrade, m_restart, m_tempdir)
         time.sleep(0.5)
         m_latest.side_effect = Exception("Upgrade should be paused.")
         auto_upgrade()
 
-        time.sleep(5)  # wait for `_pause_upgrade_period`
+        time.sleep(2)  # wait for `_pause_upgrade_period`
         m_latest.side_effect = None
 
         auto_upgrade()
