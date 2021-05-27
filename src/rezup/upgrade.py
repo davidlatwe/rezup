@@ -68,7 +68,7 @@ def auto_upgrade():
     from ._vendor import version
     from ._version import __version__
 
-    if datetime.now().timestamp() - get_last_upgrade_time() \
+    if datetime.now().timestamp() - get_upgrade_check_time() \
             < _pause_upgrade_period:
         return
 
@@ -79,6 +79,8 @@ def auto_upgrade():
     except version.VersionError:
         print("Failed to parse %s version: %s" % (_pypi_project, latest_str))
         latest = None
+
+    log_upgrade_check_time()
 
     if not latest or not latest > current:
         return
@@ -95,17 +97,13 @@ def auto_upgrade():
     ]
     subprocess.check_call(args)
 
-    # log
-    #
-    log_last_upgrade_time(datetime.now().timestamp())
-
     # restart
     #
     os.execv(sys.executable, sys.argv)
 
 
-def get_last_upgrade_time():
-    timestamp = datetime.now().timestamp()
+def get_upgrade_check_time():
+    timestamp = 0
 
     if _upgrade_record.is_file():
 
@@ -120,6 +118,8 @@ def get_last_upgrade_time():
     return timestamp
 
 
-def log_last_upgrade_time(timestamp):
+def log_upgrade_check_time():
+    timestamp = datetime.now().timestamp()
+
     with open(_upgrade_record, "w") as record:
         record.write(str(timestamp))
