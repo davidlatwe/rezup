@@ -131,6 +131,8 @@ pip install --upgrade rezup
 
 The upgrade checking process will be triggered immediately when calling `rezup` in console, except version querying or last upgrade check is done not long before `REZUP_UPGRADE_PAUSE` period ends. If upgrade is needed and completed, session will be restarted with previous command.
 
+To disable auto upgrade, use command flag `--no-upgrade` or set env var `REZUP_NO_UPGRADE` with any value.
+
 
 ### Environment Variables
 
