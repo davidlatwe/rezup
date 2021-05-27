@@ -31,6 +31,8 @@ def run():
     parser_add.add_argument("-r", "--remote", help="add a remote revision.",
                             action="store_true")
     parser_add.add_argument("-f", "--file", help="recipe file to make.")
+    parser_add.add_argument("--skip-use", help="add revision and exit.",
+                            action="store_true")
 
     # cmd: drop
     #
@@ -70,7 +72,10 @@ def run():
         cmd_use(opts.name, job=opts.do)
 
     if opts.cmd == "add":
-        cmd_add(opts.name, remote=opts.remote, recipe=opts.file)
+        cmd_add(opts.name,
+                remote=opts.remote,
+                recipe=opts.file,
+                skip_use=opts.skip_use)
 
     elif opts.cmd == "drop":
         cmd_drop(opts.name)
@@ -105,10 +110,15 @@ def cmd_use(name, job=None):
     )
 
 
-def cmd_add(name, remote=False, recipe=None):
+def cmd_add(name, remote=False, recipe=None, skip_use=False):
     root = Container.remote_root() if remote else Container.local_root()
     container = Container.create(name, root=root)
     revision = container.new_revision(recipe_file=recipe)
+
+    if not skip_use:
+        sys.exit(
+            revision.use()
+        )
 
 
 def cmd_drop(name):
