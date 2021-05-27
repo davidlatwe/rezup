@@ -23,9 +23,9 @@ class VersionError(Exception):
 
 
 _re = re.compile('^'
-                 '(\d+)\.(\d+)\.(\d+)'  # minor, major, patch
-                 '(-[0-9A-Za-z-\.]+)?'  # pre-release
-                 '(\+[0-9A-Za-z-\.]+)?'  # build
+                 '(\\d+)\\.(\\d+)\\.(\\d+)'  # minor, major, patch
+                 '(-[0-9A-Za-z-.]+)?'  # pre-release
+                 '(\\+[0-9A-Za-z-.]+)?'  # build
                  '$')
 
 
