@@ -22,7 +22,11 @@ class TestBase(unittest.TestCase):
         remote = os.path.join(base, ".remote")
 
         os.environ["REZUP_ROOT_LOCAL"] = root
-        os.environ.pop("REZUP_ROOT_REMOTE", None)  # only when needed in test
+        # back to default
+        os.environ.pop("REZUP_ROOT_REMOTE", None)
+        os.environ.pop("REZUP_UPGRADE_PAUSE", None)
+        os.environ.pop("REZUP_UPGRADE_SOURCE", None)
+        os.environ.pop("REZUP_NO_UPGRADE", None)
 
         self.base = base
         self.root = root
