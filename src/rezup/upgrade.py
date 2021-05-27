@@ -12,8 +12,6 @@ _pypi_project = "rezup-api"
 
 _local_upgrade_source = os.getenv("REZUP_UPGRADE_SOURCE")
 
-_upgrade_record = Path(tempfile.gettempdir()) / (".%s.txt" % _pypi_project)
-
 _pause_upgrade_period = int(os.getenv("REZUP_UPGRADE_PAUSE",
                                       86400))  # default to 1 day
 
@@ -28,12 +26,11 @@ def fetch_latest_version_from_local():
     return g["__version__"]
 
 
-_pypi_url = "https://pypi.python.org/simple/{}".format(_pypi_project)
-_regex_pypi_version = re.compile(".*{}-(.*)\\.tar\\.gz".format(_pypi_project))
-
-
 def fetch_latest_version_from_pypi():
     import requests
+
+    _pypi_url = "https://pypi.python.org/simple/{}".format(_pypi_project)
+    _regex_version = re.compile(".*{}-(.*)\\.tar\\.gz".format(_pypi_project))
 
     try:
         response = requests.get(url=_pypi_url, timeout=1)
@@ -42,7 +39,7 @@ def fetch_latest_version_from_pypi():
     else:
         latest_str = ""
         for line in response.text.split():
-            result = _regex_pypi_version.search(line)
+            result = _regex_version.search(line)
             if result:
                 latest_str = result.group(1)
 
@@ -89,25 +86,33 @@ def auto_upgrade():
         print("Major version bumped, not safe to upgrade automatically.")
         return
 
-    # upgrade
-    #
+    upgrade()
+    restart()
+
+
+def upgrade():
     args = [
         sys.executable, "-m", "pip", "install", "--upgrade",
         _local_upgrade_source or _pypi_project
     ]
     subprocess.check_call(args)
 
-    # restart
-    #
+
+def restart():
     os.execv(sys.executable, sys.argv)
+
+
+def update_record_file():
+    return Path(tempfile.gettempdir()) / (".%s.txt" % _pypi_project)
 
 
 def get_upgrade_check_time():
     timestamp = 0
+    upgrade_record = update_record_file()
 
-    if _upgrade_record.is_file():
+    if upgrade_record.is_file():
 
-        with open(_upgrade_record, "r") as record:
+        with open(upgrade_record, "r") as record:
             line = record.read().strip()
 
         try:
@@ -120,6 +125,7 @@ def get_upgrade_check_time():
 
 def log_upgrade_check_time():
     timestamp = datetime.now().timestamp()
+    upgrade_record = update_record_file()
 
-    with open(_upgrade_record, "w") as record:
+    with open(upgrade_record, "w") as record:
         record.write(str(timestamp))
