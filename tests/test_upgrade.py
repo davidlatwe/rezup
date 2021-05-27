@@ -72,9 +72,7 @@ class TestUpgrade(TestBase):
         auto_upgrade()
         self.assertEqual(2, m_latest.call_count)
 
-    @patch("rezup.upgrade._pypi_project",
-           "rezup")  # remove this patch once 'rezup-api' is up
-    def test_version_fetch_from_pypi(self):
+    def test_api_version_fetch_from_pypi(self):
         # as long as the value is not an empty string
         version_str = fetch_latest_version_from_pypi()
         self.assertTrue(bool(version_str))
