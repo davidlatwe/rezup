@@ -140,4 +140,4 @@ The upgrade checking process will be triggered immediately when calling `rezup` 
 |REZUP_ROOT_REMOTE|Remote root of all containers but only recipe file|
 |REZUP_NO_UPGRADE|Disable auto upgrade if set (any value is valid except empty string)|
 |REZUP_UPGRADE_PAUSE|Pause version check after last upgrade, default 86400 (1 day, in second)|
-|REZUP_UPGRADE_SOURCE|Local source repository for upgrade, look from PyPI if not set.|
+|REZUP_UPGRADE_SOURCE|Local source repository for upgrade, check from PyPI if not set.|
