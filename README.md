@@ -117,3 +117,27 @@ list containers
 ```
 $ rezup list
 ```
+
+
+### Auto Upgrade
+
+Updating package that has running console scripts can be error prone. We need to separate API package and CLI scripts as two different PyPI project (`rezup-api` & `rezup`), so we can safely upgrade only the package part while the console script is running.
+
+Both projects will be released together under same version, so that one could still upgrading the API part via upgrading CLI. As long as console script is not in use.
+
+```
+pip install --upgrade rezup
+```
+
+The upgrade checking process will be triggered immediately when calling `rezup` in console, except version querying or last upgrade check is done not long before `REZUP_UPGRADE_PAUSE` period ends. If upgrade is needed and completed, session will be restarted with previous command.
+
+
+### Environment Variables
+
+|Name|Description|
+| --- | --- |
+|REZUP_ROOT_LOCAL|Local root of all containers and metadata, default is `~/.rezup`|
+|REZUP_ROOT_REMOTE|Remote root of all containers but only recipe file|
+|REZUP_NO_UPGRADE|Disable auto upgrade if set (any value is valid except empty string)|
+|REZUP_UPGRADE_PAUSE|Pause version check after last upgrade, default 86400 (1 day, in second)|
+|REZUP_UPGRADE_SOURCE|Local source repository for upgrade, check from PyPI if not set.|

@@ -9,6 +9,10 @@ def run():
     parser = argparse.ArgumentParser("rezup")
     parser.add_argument("-V", "--version", action="store_true",
                         help="show version and exit.")
+    parser.add_argument("--check-latest", action="store_true",
+                        help="show version of latest rezup(api) and exit.")
+    parser.add_argument("--no-upgrade", action="store_true",
+                        help="disable auto upgrade check.")
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
@@ -47,6 +51,14 @@ def run():
     if opts.version:
         from rezup._version import print_info
         sys.exit(print_info())
+
+    if opts.check_latest:
+        from .upgrade import show_latest
+        sys.exit(show_latest())
+
+    if not (opts.no_upgrade or os.getenv("REZUP_NO_UPGRADE")):
+        from .upgrade import auto_upgrade
+        auto_upgrade()
 
     if opts.cmd == "use":
         cmd_use(opts.name, make=opts.make, job=opts.do)
