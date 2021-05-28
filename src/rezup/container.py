@@ -352,7 +352,7 @@ class Revision:
         if self.is_remote():
             # use local
             revision = self.pull()
-            return revision.use()
+            return revision.use(run_script=run_script)
 
         else:
             # Launch subprocess
