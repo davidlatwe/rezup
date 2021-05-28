@@ -148,3 +148,25 @@ To disable auto upgrade, use command flag `--no-upgrade` or set env var `REZUP_N
 |REZUP_NO_UPGRADE|Disable auto upgrade if set (any value is valid except empty string)|
 |REZUP_UPGRADE_PAUSE|Pause version check after last upgrade, default 86400 (1 day, in second)|
 |REZUP_UPGRADE_SOURCE|Local source repository for upgrade, check from PyPI if not set.|
+
+
+### Site Customize
+
+YOu could set a python script file in `~/rezup.toml` like so
+
+```toml
+# ~/rezup.toml
+[init]
+script = "/path/to/script.py"
+```
+
+If set, the script will be executed immediately on rezup launch. Which means, all the operations will be affected by that script. This also enabled to provide different setup base on username or other arguments.
+
+Current use case is to load and set environment variables.
+
+```python
+# /path/to/script.py
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.splitext(__file__)[0] + ".env")
+```
