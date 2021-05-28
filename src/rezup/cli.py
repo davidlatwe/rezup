@@ -2,10 +2,11 @@
 import os
 import sys
 import argparse
+from ._vendor import toml
 from .container import Container
 
 
-def run():
+def setup_parser():
     parser = argparse.ArgumentParser("rezup")
     parser.add_argument("-V", "--version", action="store_true",
                         help="show version and exit.")
@@ -50,6 +51,31 @@ def run():
     # TODO: able to *pull* revision from container to another
     # TODO: an interface to pin/tag container revision (if needed)
 
+    return parser
+
+
+def site_customize():
+    startup_recipe = os.path.expanduser("~/rezup.toml")
+    if not os.path.isfile(startup_recipe):
+        return
+
+    init_cfg = toml.load(startup_recipe).get("init") or dict()
+    script = init_cfg.get("script")
+    if not script or not os.path.isfile(script):
+        return
+
+    g = dict(
+        __name__=os.path.splitext(os.path.basename(script))[0],
+        __file__=script,
+    )
+    with open(script) as f:
+        code = compile(f.read(), script, "exec")
+        exec(code, g)
+
+
+def run():
+    parser = setup_parser()
+
     # for fast access
     if len(sys.argv) == 1:
         sys.argv += ["use", ".main"]
@@ -63,6 +89,9 @@ def run():
     if opts.check_latest:
         from .upgrade import show_latest
         sys.exit(show_latest())
+
+    # important step for diversity setup
+    site_customize()
 
     if not (opts.no_upgrade or os.getenv("REZUP_NO_UPGRADE")):
         from .upgrade import auto_upgrade

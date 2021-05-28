@@ -200,6 +200,10 @@ class Revision:
         if not self._container.is_remote():
             self._install(recipe)
 
+        # cleanup entries that revision doesn't need
+        #
+        recipe.pop("init", None)
+
         # save recipe, mark as ready
         #
         with open(self._recipe, "w") as f:
