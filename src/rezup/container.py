@@ -34,6 +34,14 @@ class ContainerError(Exception):
 #   - [ ] REZUP_CLEAN_AFTER
 
 
+def iter_containers(root):
+    if not (root and os.path.isdir(root)):
+        return
+
+    for dirname in os.listdir(root):
+        yield Container(dirname, root=root)
+
+
 class Container:
     """Timestamp ordered virtual environment stack
 
@@ -85,13 +93,24 @@ class Container:
         return Container(name, root)
 
     def root(self):
+        """Root path of current container"""
         return self._root
 
     def name(self):
+        """Name of current container"""
         return self._name
 
     def path(self):
+        """Path of current container"""
         return self._path
+
+    def libs(self):
+        """Root path of current container's shared libraries"""
+        return self._path / "libs"
+
+    def revisions(self):
+        """Root path of current container's revisions"""
+        return self._path / "revisions"
 
     def is_exists(self):
         return self._path.is_dir()
@@ -163,7 +182,7 @@ class Revision:
 
     @classmethod
     def compose_path(cls, container, dirname=None):
-        path = container.path() / "revisions"
+        path = container.revisions()
         if dirname:
             path /= dirname
         return path
@@ -232,15 +251,16 @@ class Revision:
             python = 2.7
 
         """
-        tools = []
+        tools = [Tool(data) for data in recipe.get("extension", [])]
+        shared = recipe.get("shared")
+
         installer = Installer(self)
-
-        tools.append(Tool(recipe["rez"]))
-        for data in recipe.get("extension", []):
-            tools.append(Tool(data))
-
+        installer.install_rez(Tool(recipe["rez"]))
+        if shared:
+            installer.create_shared_lib(name=shared["name"],
+                                        requires=shared["requires"])
         for tool in tools:
-            installer.install(tool)
+            installer.install_extension(tool)
 
         # make launch scripts, for prompt and job run
         _con_name = self._container.name()
@@ -388,7 +408,7 @@ class Tool:
 
     def __init__(self, data):
         self.name = data["name"]
-        self.url = data["url"]
+        self.url = data.get("url", data["name"])
         self.edit = data.get("edit", False)
         self.isolation = data.get("isolation", False)
         self.python = data.get("python", None)
@@ -400,18 +420,24 @@ class Installer:
         self._container = revision.container()
         self._revision = revision
         self._default_venv = None
-        self._shared_tools = list()
+        self._rez_as_libs = None
         self._rez_version = None
 
     def installed_rez_version(self):
         return self._rez_version
 
-    def install(self, tool):
-        if tool.isolation or tool.name == "rez":
+    def install_rez(self, tool):
+        assert tool.name == "rez"
+
+        venv_session = self.create_venv(tool)
+        self._default_venv = venv_session
+        self._rez_as_libs = tool
+
+        self.install_package(tool, venv_session)
+
+    def install_extension(self, tool):
+        if tool.isolation:
             venv_session = self.create_venv(tool)
-            if tool.name == "rez":
-                self._default_venv = venv_session
-                self._shared_tools.append(tool)
         else:
             venv_session = self._default_venv
 
@@ -419,9 +445,7 @@ class Installer:
             raise Exception("No python venv created, this is a bug.")
 
         if venv_session is not self._default_venv:
-            for shared in self._shared_tools:
-                self.install_package(shared, venv_session)
-
+            self.install_package(self._rez_as_libs, venv_session, make_scripts=False)
         self.install_package(tool, venv_session)
 
     def create_venv(self, tool):
@@ -437,7 +461,7 @@ class Installer:
 
         return session
 
-    def install_package(self, tool, venv_session):
+    def install_package(self, tool, venv_session, make_scripts=True):
         python_exec = str(venv_session.creator.exe)
         cmd = [python_exec, "-m", "pip", "install"]
 
@@ -454,9 +478,10 @@ class Installer:
         print("Installing %s.." % tool.name)
         subprocess.check_output(cmd)
 
-        self.create_production_scripts(tool, venv_session)
-        if tool.name == "rez":
-            self.mark_as_rez_production_install(tool, venv_session)
+        if make_scripts:
+            self.create_production_scripts(tool, venv_session)
+            if tool.name == "rez":
+                self.mark_as_rez_production_install(tool, venv_session)
 
     def mark_as_rez_production_install(self, tool, venv_session):
         validator = self._revision.path() / "bin" / ".rez_production_install"
@@ -527,6 +552,28 @@ class Installer:
         )
 
         return scripts
+
+    def create_shared_lib(self, name, requires):
+        lib_path = self._container.libs() / name
+
+        venv_session = self._default_venv
+        python_exec = str(venv_session.creator.exe)
+        cmd = [python_exec, "-m", "pip", "install", "-U"]
+
+        cmd += requires
+        cmd += [
+            # don't make noise
+            "--disable-pip-version-check",
+            "--target",
+            str(lib_path),
+        ]
+
+        subprocess.check_output(cmd)
+
+        # link shared lib with rez venv (the default venv)
+        site_packages = venv_session.creator.purelib
+        with open(site_packages / "_shared.pth", "w") as f:
+            f.write(str(lib_path))
 
 
 def deep_update(dict1, dict2):

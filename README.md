@@ -118,9 +118,9 @@ remove container foo
 $ rezup drop foo
 ```
 
-list containers
+list containers and info
 ```
-$ rezup list
+$ rezup status
 ```
 
 
