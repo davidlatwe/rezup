@@ -387,7 +387,7 @@ class Tool:
 
     def __init__(self, data):
         self.name = data["name"]
-        self.url = data["url"]
+        self.url = data.get("url", data["name"])
         self.edit = data.get("edit", False)
         self.isolation = data.get("isolation", False)
         self.python = data.get("python", None)
