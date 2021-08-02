@@ -3,7 +3,7 @@ import os
 import sys
 import argparse
 from ._vendor import toml
-from .container import Container
+from .container import Container, iter_containers
 
 
 def setup_parser():
@@ -40,13 +40,10 @@ def setup_parser():
     parser_drop = subparsers.add_parser("drop", help="remove container")
     parser_drop.add_argument("name", help="container name")
 
-    # cmd: list
+    # cmd: status
     #
-    parser_list = subparsers.add_parser("list", help="list rez containers")
-    # list revisions
-    # parser_list.add_argument("name", help="container name")
-    # list from remote
-    # parser_list.add_argument("-r", "--remote")
+    parser_status = subparsers.add_parser("status", help="Show status of containers")
+    parser_status.add_argument("name", nargs="?", help="container name")
 
     # TODO: able to *pull* revision from container to another
     # TODO: an interface to pin/tag container revision (if needed)
@@ -109,8 +106,8 @@ def run():
     elif opts.cmd == "drop":
         cmd_drop(opts.name)
 
-    elif opts.cmd == "list":
-        cmd_inventory()
+    elif opts.cmd == "status":
+        cmd_status(opts.name)
 
 
 def cmd_use(name, job=None):
@@ -155,12 +152,44 @@ def cmd_drop(name):
     container.purge()
 
 
-def cmd_inventory():
-    root = Container.default_root()
+def cmd_status(name):
+    local = Container.local_root()
+    remote = Container.remote_root()
 
-    if not os.path.isdir(root):
-        print("No container.")
-        return
+    print("")
+    print("   Local Root: %s" % local)
+    print("  Remote Root: %s" % remote)
+    print("")
 
-    for name in os.listdir(root):
-        print(name)
+    _locals = {c.name(): c for c in iter_containers(local)}
+    _remotes = {c.name(): c for c in iter_containers(remote)}
+
+    all_containers = set(_locals.keys()).union(_remotes.keys())
+
+    print("   NAME   | LOCAL REV | REMOTE REV ")
+    print("-----------------------------------")
+    status_line = "{name: <10} {local_revisions: >11} {remote_revisions: >12}"
+
+    for _name in all_containers:
+        local_con = _locals.get(_name)
+        remote_con = _remotes.get(_name)
+
+        status = {
+            "name": _name,
+            "local_revisions": "-",
+            "remote_revisions": "-",
+        }
+        if local_con is not None:
+            status["local_revisions"] = len(list(local_con.iter_revision()))
+        if remote_con is not None:
+            status["remote_revisions"] = len(list(remote_con.iter_revision()))
+
+        print(status_line.format(**status))
+
+    if name:
+        print("")
+        local_con = _locals.get(name)
+        if local_con is not None:
+            print("  Shared libs:")
+            for lib_name in os.listdir(local_con.libs()):
+                print("    %s" % lib_name)

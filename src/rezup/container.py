@@ -34,6 +34,14 @@ class ContainerError(Exception):
 #   - [ ] REZUP_CLEAN_AFTER
 
 
+def iter_containers(root):
+    if not (root and os.path.isdir(root)):
+        return
+
+    for dirname in os.listdir(root):
+        yield Container(dirname, root=root)
+
+
 class Container:
     """Timestamp ordered virtual environment stack
 
@@ -85,13 +93,24 @@ class Container:
         return Container(name, root)
 
     def root(self):
+        """Root path of current container"""
         return self._root
 
     def name(self):
+        """Name of current container"""
         return self._name
 
     def path(self):
+        """Path of current container"""
         return self._path
+
+    def libs(self):
+        """Root path of current container's shared libraries"""
+        return self._path / "libs"
+
+    def revisions(self):
+        """Root path of current container's revisions"""
+        return self._path / "revisions"
 
     def is_exists(self):
         return self._path.is_dir()
@@ -163,7 +182,7 @@ class Revision:
 
     @classmethod
     def compose_path(cls, container, dirname=None):
-        path = container.path() / "revisions"
+        path = container.revisions()
         if dirname:
             path /= dirname
         return path
@@ -535,7 +554,7 @@ class Installer:
         return scripts
 
     def create_shared_lib(self, name, requires):
-        lib_path = self._container.path() / "libs" / name
+        lib_path = self._container.libs() / name
 
         venv_session = self._default_venv
         python_exec = str(venv_session.creator.exe)
