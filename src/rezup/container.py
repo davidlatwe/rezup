@@ -412,6 +412,8 @@ class Installer:
         self._default_venv = venv_session
         self._rez_as_libs = tool
 
+        self.install_package(tool, venv_session)
+
     def install_extension(self, tool):
         if tool.isolation:
             venv_session = self.create_venv(tool)
