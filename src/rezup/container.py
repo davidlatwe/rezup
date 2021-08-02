@@ -233,14 +233,13 @@ class Revision:
 
         """
         tools = []
-        installer = Installer(self)
-
-        tools.append(Tool(recipe["rez"]))
         for data in recipe.get("extension", []):
             tools.append(Tool(data))
 
+        installer = Installer(self)
+        installer.install_rez(Tool(recipe["rez"]))
         for tool in tools:
-            installer.install(tool)
+            installer.install_extension(tool)
 
         # make launch scripts, for prompt and job run
         _con_name = self._container.name()
@@ -400,18 +399,22 @@ class Installer:
         self._container = revision.container()
         self._revision = revision
         self._default_venv = None
-        self._shared_tools = list()
+        self._rez_as_libs = None
         self._rez_version = None
 
     def installed_rez_version(self):
         return self._rez_version
 
-    def install(self, tool):
-        if tool.isolation or tool.name == "rez":
+    def install_rez(self, tool):
+        assert tool.name == "rez"
+
+        venv_session = self.create_venv(tool)
+        self._default_venv = venv_session
+        self._rez_as_libs = tool
+
+    def install_extension(self, tool):
+        if tool.isolation:
             venv_session = self.create_venv(tool)
-            if tool.name == "rez":
-                self._default_venv = venv_session
-                self._shared_tools.append(tool)
         else:
             venv_session = self._default_venv
 
@@ -419,9 +422,7 @@ class Installer:
             raise Exception("No python venv created, this is a bug.")
 
         if venv_session is not self._default_venv:
-            for shared in self._shared_tools:
-                self.install_package(shared, venv_session)
-
+            self.install_package(self._rez_as_libs, venv_session, make_scripts=False)
         self.install_package(tool, venv_session)
 
     def create_venv(self, tool):
@@ -437,7 +438,7 @@ class Installer:
 
         return session
 
-    def install_package(self, tool, venv_session):
+    def install_package(self, tool, venv_session, make_scripts=True):
         python_exec = str(venv_session.creator.exe)
         cmd = [python_exec, "-m", "pip", "install"]
 
@@ -454,9 +455,10 @@ class Installer:
         print("Installing %s.." % tool.name)
         subprocess.check_output(cmd)
 
-        self.create_production_scripts(tool, venv_session)
-        if tool.name == "rez":
-            self.mark_as_rez_production_install(tool, venv_session)
+        if make_scripts:
+            self.create_production_scripts(tool, venv_session)
+            if tool.name == "rez":
+                self.mark_as_rez_production_install(tool, venv_session)
 
     def mark_as_rez_production_install(self, tool, venv_session):
         validator = self._revision.path() / "bin" / ".rez_production_install"
