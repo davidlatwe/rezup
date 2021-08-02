@@ -8,10 +8,12 @@ if (!$env:REZUP_DISABLE_PROMPT) {
     function global:prompt {
         # Add the custom prefix to the existing prompt
         $previous_prompt_value = & $function:_old_virtual_prompt
-        ("__REZUP_PROMPT__" + $previous_prompt_value)
+        ($previous_prompt_value + "__REZUP_PROMPT__")
     }
 }
 
 if ($env:__REZUP_RUN_SCRIPT__) {
     & "__REZUP_SCRIPT__"
 }
+
+exit $LastExitCode

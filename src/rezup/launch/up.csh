@@ -22,7 +22,7 @@ if ( $do_prompt == "1" ) then
         if ( "$prompt:q" =~ *"$newline:q"* ) then
             :
         else
-            set prompt = "$env_name:q$prompt:q"
+            set prompt = "$prompt:q$env_name:q"
         endif
     endif
 endif

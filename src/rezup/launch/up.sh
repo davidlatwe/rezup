@@ -1,6 +1,6 @@
 
 if [ -z "${REZUP_DISABLE_PROMPT-}" ] ; then
-    PS1="__REZUP_PROMPT__${PS1-}"
+    PS1="${PS1-}__REZUP_PROMPT__"
     export PS1
 fi
 
@@ -8,8 +8,5 @@ fi
 if [ -n "${__REZUP_RUN_SCRIPT__-}" ] ; then
     # shellcheck source=/dev/null
     . "__REZUP_SCRIPT__"
-else
-    __REZUP_SHELL__
+    exit $?
 fi
-
-exit $?

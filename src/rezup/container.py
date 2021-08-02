@@ -243,18 +243,6 @@ class Revision:
         for tool in tools:
             installer.install(tool)
 
-        # make launch scripts, for prompt and job run
-        _con_name = self._container.name()
-        _rez_ver = installer.installed_rez_version() or "unknown"
-        _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
-        _prompt_info = (_con_name, _rez_ver, _revision_date)
-        prompt_string = "(%s) - Rez %s - %s{linebreak}" % _prompt_info
-
-        replacements = {
-            "__REZUP_PROMPT__": prompt_string,
-        }
-        shell.generate_launch_script(self._path, replacements)
-
     def validate(self):
         is_valid = True
         seconds = float(self._dirname)
@@ -379,11 +367,7 @@ class Revision:
                 block = True
 
             # make launch scripts, for prompt and job run
-            _con_name = self._container.name()
-            _rez_ver = self.get_rez_version()
-            _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
-            _prompt_info = (_con_name, _rez_ver, _revision_date)
-            prompt_string = "(%s) - Rez %s - %s{linebreak}" % _prompt_info
+            prompt_string = "(%s) " % self._container.name()
             replacements = {
                 "__REZUP_PROMPT__": prompt_string,
                 "__REZUP_SCRIPT__": run_script,

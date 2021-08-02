@@ -48,9 +48,10 @@ def get_launch_cmd(shell_name, shell_exec, launch_script, block=True):
         # TODO: use --rcs (zsh) or --rcfile (bash)
         command = [shell_exec]
 
-    if launch_script:
-        launch_script = str(launch_script)
-        command.append(launch_script)
+    # if launch_script:
+    #     launch_script = str(launch_script)
+    #     command.append("--rcs")
+    #     command.append(launch_script)
 
     return command
 
