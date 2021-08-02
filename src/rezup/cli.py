@@ -168,7 +168,7 @@ def cmd_status(name):
 
     print("   NAME   | LOCAL REV | REMOTE REV ")
     print("-----------------------------------")
-    status_line = "{name: <10} {local_revisions: >11} {remote_revisions: >12}"
+    status_line = "{name: ^10} {local_revisions: >11} {remote_revisions: >12}"
 
     for _name in all_containers:
         local_con = _locals.get(_name)
