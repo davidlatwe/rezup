@@ -232,12 +232,14 @@ class Revision:
             python = 2.7
 
         """
-        tools = []
-        for data in recipe.get("extension", []):
-            tools.append(Tool(data))
+        tools = [Tool(data) for data in recipe.get("extension", [])]
+        shared = recipe.get("shared")
 
         installer = Installer(self)
         installer.install_rez(Tool(recipe["rez"]))
+        if shared:
+            installer.create_shared_lib(name=shared["name"],
+                                        requires=shared["requires"])
         for tool in tools:
             installer.install_extension(tool)
 
@@ -531,6 +533,28 @@ class Installer:
         )
 
         return scripts
+
+    def create_shared_lib(self, name, requires):
+        lib_path = self._container.path() / "libs" / name
+
+        venv_session = self._default_venv
+        python_exec = str(venv_session.creator.exe)
+        cmd = [python_exec, "-m", "pip", "install", "-U"]
+
+        cmd += requires
+        cmd += [
+            # don't make noise
+            "--disable-pip-version-check",
+            "--target",
+            str(lib_path),
+        ]
+
+        subprocess.check_output(cmd)
+
+        # link shared lib with rez venv (the default venv)
+        site_packages = venv_session.creator.purelib
+        with open(site_packages / "_shared.pth", "w") as f:
+            f.write(str(lib_path))
 
 
 def deep_update(dict1, dict2):
