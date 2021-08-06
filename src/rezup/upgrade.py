@@ -71,15 +71,19 @@ def auto_upgrade():
 
     current = version.Version(__version__)
     latest_str = fetch_latest()
+    latest = None
     try:
         latest = version.Version(latest_str)
-    except version.VersionError:
+    except (version.VersionError, TypeError):
         print("Failed to parse %s version: %s" % (_pypi_project, latest_str))
-        latest = None
 
     log_upgrade_check_time()
 
-    if not latest or not latest > current:
+    if not latest:
+        print("Auto upgrade failed.")
+        return
+
+    if not latest > current:  # already latest
         return
 
     if latest.major > current.major:
