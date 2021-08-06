@@ -80,7 +80,7 @@ If the extension has `isolation` set to true, additional venv will be created ju
 
 For saving revision's creation time, one could add `shared` section in setting for defining dependencies that can be shared across all revisions in one container. Won't be shared with extension that has `isolated` set to true.
 
-Section `env` is for setting environment variables when container revision is being used. However this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](### Site Customize) below for better alternative.
+Section `env` is for setting environment variables when container revision is being used. However this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](#site-customize) below for better alternative.
 
 
 ### Caveat
