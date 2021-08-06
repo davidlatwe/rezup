@@ -29,8 +29,6 @@ class ContainerError(Exception):
 #   implement/document these env vars
 #   - [x] REZUP_ROOT_REMOTE
 #   - [x] REZUP_ROOT_LOCAL
-#   - [ ] REZUP_PUSH_AUTH
-#   - [ ] REZUP_IGNORE_REMOTE
 #   - [ ] REZUP_CLEAN_AFTER
 
 

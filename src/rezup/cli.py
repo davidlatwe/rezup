@@ -156,6 +156,8 @@ def cmd_status(name):
     local = Container.local_root()
     remote = Container.remote_root()
 
+    # TODO: displaying estimated time of upgrade.
+
     print("")
     print("   Local Root: %s" % local)
     print("  Remote Root: %s" % remote)
