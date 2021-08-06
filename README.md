@@ -59,6 +59,14 @@ url = "git+git://github.com/get-bar/bar"
 isolation = true
 python = 2.7
 
+[shared]
+name = "production"
+requires = [
+    "toml",
+    "pyside2",
+    "Qt5.py",
+]
+
 [env]
 REZ_CONFIG_FILE = "/path/to/rezconfig.py"
 
@@ -69,6 +77,10 @@ The settings in section `rez` and `extension` will be parsed and pass to `pip`, 
 The `edit` can be used if the `url` is a filesystem path that point to the source code and the Rez environment can run in dev-mode.
 
 If the extension has `isolation` set to true, additional venv will be created just for that package. Different Python version (if can be found from system) will be used when `python` entry presented.
+
+For saving revision's creation time, one could add `shared` section in setting for defining dependencies that can be shared across all revisions in one container. Won't be shared with extension that has `isolated` set to true.
+
+Section `env` is for setting environment variables when container revision is being used. However this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](### Site Customize) below for better alternative.
 
 
 ### Caveat
