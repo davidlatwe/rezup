@@ -90,13 +90,14 @@ def auto_upgrade():
         print("Major version bumped, not safe to upgrade automatically.")
         return
 
+    print("Auto upgrading rezup (%s) .." % str(latest))
     upgrade()
     restart()
 
 
 def upgrade():
     args = [
-        sys.executable, "-m", "pip", "install", "--upgrade",
+        sys.executable, "-m", "pip", "install", "-qq", "--upgrade",
         _local_upgrade_source or _pypi_project
     ]
     subprocess.check_call(args)
