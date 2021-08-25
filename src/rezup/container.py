@@ -219,7 +219,10 @@ class Revision:
         recipe = toml.load(Path(os.path.dirname(__file__)) / "rezup.toml")
         recipe_file = os.path.expanduser(recipe_file or default_recipe)
         if os.path.isfile(recipe_file):
+            print("Recipe sourced from: %s" % recipe_file)
             deep_update(recipe, toml.load(recipe_file))
+        else:
+            print("Recipe not exists: %s" % recipe_file)
 
         # install
         #
