@@ -1,12 +1,16 @@
 # rezup
 
+[![Python package](https://github.com/davidlatwe/rezup/actions/workflows/python-package.yml/badge.svg)](https://github.com/davidlatwe/rezup/actions/workflows/python-package.yml)
+[![Version](http://img.shields.io/pypi/v/rezup-api.svg?style=flat)](https://pypi.python.org/pypi/rezup-api)
+
 [Rez](https://github.com/nerdvegas/rez) launching environment manager
+
+<img src="https://user-images.githubusercontent.com/3357009/130851292-2510bb0e-7fc5-409e-bfbb-e38ab4086d11.gif" width="610"></img>
 
 
 ### What is this ?
 
 A Rez production virtual environment management tool, which allows safe environment update without any interruption. Plus a convenient virtual environment setup interface.
-
 
 ## Install
 
@@ -15,14 +19,13 @@ A Rez production virtual environment management tool, which allows safe environm
 $ pip install rezup
 ```
 
-
 ## Quick start
 
 By typing `rezup` in terminal, a container named `.main` will be created under `~/.rezup` by default (the root location can be changed by setting env var `REZUP_ROOT_LOCAL`). Once that done, a vanilla Rez environment is presented by a subprocess and simply typing `exit` to escape.
 
 ### Container
 
-Each container holds at least one virtual environment folder which are named by timestamp. With that convention, latest version of environment can be provided without affecting existing user.
+A *container* is a Rez environment. And each container holds at least one virtual environment folder named by timestamp, which is *revision*. With that convention, latest version of environment can be provided without affecting existing user.
 
 ```
 # Container/Revision structure
@@ -44,7 +47,7 @@ For centralize management in production, one remote container can be defined wit
 
 ### Recipe
 
-To customize environment, you can write a `~/rezup.toml` to tell what should be installed and what environment variable should have. For example :
+To customize the container, you can write a `~/rezup.toml` to tell what should be installed and what environment variable should have. For example :
 
 ```toml
 description = "My rez setup"
