@@ -60,6 +60,7 @@ class Container:
     venv will be created locally or re-used if same revision exists in local.
 
     """
+    DEFAULT_NAME = ".main"
 
     def __init__(self, name, root=None):
         root = Path(root) if root else self.default_root()
@@ -205,10 +206,18 @@ class Revision:
         if not self.is_valid():
             raise Exception("Invalid new revision, this is a bug.")
 
+        _con_name = self._container.name()
+
         # compose recipe
         #
+        default_recipe = "~/rezup.toml"
+        if _con_name != Container.DEFAULT_NAME:
+            _recp_con = "~/rezup.%s.toml" % _con_name
+            if os.path.isfile(os.path.expanduser(_recp_con)):
+                default_recipe = _recp_con
+
         recipe = toml.load(Path(os.path.dirname(__file__)) / "rezup.toml")
-        recipe_file = recipe_file or os.path.expanduser("~/rezup.toml")
+        recipe_file = os.path.expanduser(recipe_file or default_recipe)
         if os.path.isfile(recipe_file):
             deep_update(recipe, toml.load(recipe_file))
 
@@ -352,8 +361,8 @@ class Revision:
             raise Exception("Cannot pull revision from local container.")
 
         # get local
-        name = self._container.name()
-        local = Container.create(name, root=Container.local_root())
+        _con_name = self._container.name()
+        local = Container.create(_con_name, root=Container.local_root())
         revision = local.get_revision_at_time(self._timestamp, strict=True)
         if revision is None:
             revision = Revision(container=local, dirname=self._dirname)

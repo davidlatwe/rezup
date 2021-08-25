@@ -7,6 +7,8 @@ from .container import Container, iter_containers
 
 
 def setup_parser():
+    _con_def = Container.DEFAULT_NAME
+
     parser = argparse.ArgumentParser("rezup")
     parser.add_argument("-V", "--version", action="store_true",
                         help="show version and exit.")
@@ -20,15 +22,15 @@ def setup_parser():
     # cmd: use
     #
     parser_use = subparsers.add_parser("use", help="use container")
-    parser_use.add_argument("name", nargs="?", default=".main",
-                            help="container name. default: '.main'")
+    parser_use.add_argument("name", nargs="?", default=_con_def,
+                            help="container name. default: '%s'" % _con_def)
     parser_use.add_argument("-d", "--do", help="run a shell script and exit.")
 
     # cmd: add
     #
     parser_add = subparsers.add_parser("add", help="add container revision")
-    parser_add.add_argument("name", nargs="?", default=".main",
-                            help="container name. default: '.main'")
+    parser_add.add_argument("name", nargs="?", default=_con_def,
+                            help="container name. default: '%s'" % _con_def)
     parser_add.add_argument("-r", "--remote", help="add a remote revision.",
                             action="store_true")
     parser_add.add_argument("-f", "--file", help="recipe file to make.")
@@ -75,7 +77,7 @@ def run():
 
     # for fast access
     if len(sys.argv) == 1:
-        sys.argv += ["use", ".main"]
+        sys.argv += ["use", Container.DEFAULT_NAME]
 
     opts = parser.parse_args()
 
@@ -120,7 +122,7 @@ def cmd_use(name, job=None):
                   % (container.name(), container.path()))
             sys.exit(1)
 
-        elif container.name() != ".main":
+        elif container.name() != Container.DEFAULT_NAME:
             print("Container '%s' not exist, use --make to create."
                   % container.name())
             sys.exit(1)
