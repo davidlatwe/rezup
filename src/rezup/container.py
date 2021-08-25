@@ -274,10 +274,9 @@ class Revision:
 
         # make launch scripts, for prompt and job run
         _con_name = self._container.name()
-        _rez_ver = installer.installed_rez_version() or "unknown"
         _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
-        _prompt_info = (_con_name, _rez_ver, _revision_date)
-        prompt_string = "(%s) - Rez %s - %s{linebreak}" % _prompt_info
+        _prompt_info = (_con_name, _revision_date)
+        prompt_string = "rezup (%s) - %s{linebreak}" % _prompt_info
 
         replacements = {
             "__REZUP_PROMPT__": prompt_string,
