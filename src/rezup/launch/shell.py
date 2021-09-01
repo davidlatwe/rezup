@@ -36,18 +36,25 @@ def get_current_shell():
 
 def provide_default():
     if os.name == "posix":
-        return os.environ["SHELL"]
+        shell = os.environ["SHELL"]
     elif os.name == "nt":
-        return os.environ["COMSPEC"]
-    raise NotImplementedError(f"OS {os.name!r} support not available")
+        shell = os.environ["COMSPEC"]
+    else:
+        raise NotImplementedError(f"OS {os.name!r} support not available")
+
+    shell, ext = os.path.splitext(os.path.basename(shell))
+    shell = shell.lower()
+
+    return shell
 
 
 def get_launch_cmd(name, launch_dir, block=True):
-    launch_script = None
     for script, supported_shells in LAUNCH_SCRIPTS.items():
         if name in supported_shells:
             launch_script = str(launch_dir / script)
             break
+    else:
+        raise Exception("No matching launch script for current shell: %s" % name)
 
     if name == "cmd":
         command = [name]
@@ -64,9 +71,8 @@ def get_launch_cmd(name, launch_dir, block=True):
     else:
         command = [name]
 
-    if launch_script:
-        command.append(launch_script)
-
+    # Must have launch script
+    command.append(launch_script)
     return command
 
 
