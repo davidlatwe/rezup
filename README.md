@@ -118,7 +118,7 @@ $ rezup use foo
 
 use foo and do job
 ```
-$ rezup use foo --do {script.bat}
+$ rezup use foo --do {script.bat or "quoted command"}
 ```
 
 create & use new venv into default container `.main` (recipe `~/rezup.toml` will be picked if exists)
