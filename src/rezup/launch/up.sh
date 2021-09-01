@@ -16,3 +16,7 @@ if [ -n "${__REZUP_SCRIPT__-}" ] ; then
     # shellcheck source=/dev/null
     . "${__REZUP_SCRIPT__}"
 fi
+if [ -n "${__REZUP_COMMAND__-}" ] ; then
+    # shellcheck source=/dev/null
+    "${__REZUP_COMMAND__}"
+fi

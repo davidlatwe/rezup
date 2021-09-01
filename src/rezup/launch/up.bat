@@ -10,3 +10,6 @@ if not defined REZUP_DISABLE_PROMPT (
 if defined __REZUP_SCRIPT__ (
     call %__REZUP_SCRIPT__%
 )
+if defined __REZUP_COMMAND__ (
+    %__REZUP_COMMAND__%
+)

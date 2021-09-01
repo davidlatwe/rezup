@@ -24,7 +24,8 @@ def setup_parser():
     parser_use = subparsers.add_parser("use", help="use container")
     parser_use.add_argument("name", nargs="?", default=_con_def,
                             help="container name. default: '%s'" % _con_def)
-    parser_use.add_argument("-d", "--do", help="run a shell script and exit.")
+    parser_use.add_argument("-d", "--do",
+                            help="run a shell script or command and exit.")
 
     # cmd: add
     #

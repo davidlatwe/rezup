@@ -394,8 +394,11 @@ class Revision:
             # use `pythonfinder` package if need to exclude python from PATH
 
             if run_script:
-                env["__REZUP_SCRIPT__"] = os.path.abspath(run_script)
                 block = False
+                if os.path.isfile(run_script):
+                    env["__REZUP_SCRIPT__"] = os.path.abspath(run_script)
+                else:
+                    env["__REZUP_COMMAND__"] = run_script
             else:
                 block = True
 

@@ -17,3 +17,6 @@ end
 if test -n '__REZUP_SCRIPT__'
     . "${__REZUP_SCRIPT__}"
 end
+if test -n '__REZUP_COMMAND__'
+    "${__REZUP_COMMAND__}"
+end
