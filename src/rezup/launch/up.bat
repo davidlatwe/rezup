@@ -12,4 +12,5 @@ if defined __REZUP_SCRIPT__ (
 )
 if defined __REZUP_COMMAND__ (
     %__REZUP_COMMAND__%
+    goto :eof
 )
