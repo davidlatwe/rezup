@@ -104,12 +104,18 @@ def upgrade():
 
 
 def restart():
+    args = sys.argv[:]
+    # ensure first argument is executable
+    #   (could be __main__.py if rezup is called as module)
+    if sys.argv[0].endswith("__main__.py"):
+        args = [sys.executable, "-m", "rezup"] + args[1:]
+
     if sys.platform == "win32":
         sys.exit(
-            subprocess.run(sys.argv).returncode
+            subprocess.run(args).returncode
         )
     else:
-        os.execv(sys.argv[0], sys.argv)
+        os.execv(args[0], args)
 
 
 def update_record_file():
