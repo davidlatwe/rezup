@@ -9,4 +9,5 @@ __version__ = g["__version__"]
 
 setup(
     version=__version__,
+    install_requires=["rezup-api>=%s,<2" % __version__]
 )
