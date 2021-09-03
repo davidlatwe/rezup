@@ -90,13 +90,12 @@ For saving revision's creation time, one could add `shared` section in setting f
 
 Section `env` is for setting environment variables when container revision is being used. However this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](#site-customize) below for better alternative.
 
-For convenience, recipe file name can embed container name so that command `rezup add <container>` could pick it up when creating corresponding container, for example:
+Recipe file name should embed container name (if not default container) so that command `rezup add <container>` could pick it up when creating corresponding container, for example:
 
 * `~/rezup.toml` for container `.main`, the default
 * `~/rezup.dev.toml` for container `dev`
 * `~/rezup.test.toml` for container `test`
 * `~/rezup.{name}.toml` for container `{name}`
-* Fallback to `~/rezup.toml` if no match from user home, nor given by `--file`
 
 
 ### Caveat
@@ -121,12 +120,12 @@ use foo and do job
 $ rezup use foo --do {script.bat or "quoted command"}
 ```
 
-create & use new venv into default container `.main` (recipe `~/rezup.toml` will be picked if exists)
+create & use new venv into default container `.main` (recipe `~/rezup.toml` will be used)
 ```
 $ rezup add
 ```
 
-create & use new venv into container foo (recipe `~/rezup.foo.toml` will be picked if exists)
+create & use new venv into container foo (recipe `~/rezup.foo.toml` will be used)
 ```
 $ rezup add foo
 ```
