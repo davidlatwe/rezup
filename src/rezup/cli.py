@@ -130,7 +130,7 @@ def cmd_use(name, job=None):
             sys.exit(1)
 
         elif container.name() != Container.DEFAULT_NAME:
-            print("Container '%s' not exist, use --make to create."
+            print("Container '%s' not exist, use 'rezup add' to create."
                   % container.name())
             sys.exit(1)
 
