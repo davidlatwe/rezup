@@ -61,6 +61,7 @@ class Container:
 
     """
     DEFAULT_NAME = ".main"
+    BASE_RECIPE = (Path(__file__).parent / "rezup.toml").resolve()
 
     def __init__(self, name, root=None):
         root = Path(root) if root else self.default_root()
@@ -90,6 +91,38 @@ class Container:
         root = Path(root) if root else cls.default_root()
         os.makedirs(root / name, exist_ok=True)
         return Container(name, root)
+
+    @classmethod
+    def recipe_file(cls, name, ensure_exists=False):
+        """Return container specific recipe file path
+
+        The recipe file of default container '.main' will be '~/rezup.toml'
+
+        And for other container, it will be `~/rezup.{name}.toml`
+        for example:
+            * `~/rezup.dev.toml`  -> container `dev`
+            * `~/rezup.test.toml` -> container `test`
+
+        Args:
+            name(str): Container name
+            ensure_exists(bool): If true, default recipe file will be
+                generated if not exists. Default false.
+
+        Returns:
+            str: recipe file path
+
+        """
+        if name == cls.DEFAULT_NAME:
+            file_path = os.path.expanduser("~/rezup.toml")
+        else:
+            file_path = os.path.expanduser("~/rezup.%s.toml" % name)
+
+        if ensure_exists:
+            with open(cls.BASE_RECIPE, "r") as r:
+                with open(file_path, "w") as w:
+                    w.write(r.read())
+
+        return file_path
 
     def root(self):
         """Root path of current container"""
@@ -162,7 +195,7 @@ class Container:
                         or (not strict and revision.timestamp() <= timestamp)):
                     return revision
 
-    def new_revision(self, recipe_file=None):
+    def new_revision(self, recipe_file):
         return Revision.create(self, recipe_file)
 
 
@@ -176,7 +209,7 @@ class Revision:
         self._path = self.compose_path(container, dirname)
         self._timestamp = None
         self._is_valid = None
-        self._recipe = self._path / "rezup.toml"
+        self._recipe = self._path / "rezup.toml"  # revision internal recipe
         self._metadata = self._path / "revision.json"
 
     @classmethod
@@ -187,12 +220,18 @@ class Revision:
         return path
 
     @classmethod
-    def create(cls, container, recipe_file=None):
+    def create(cls, container, recipe_file):
         revision = cls(container=container)
         revision._write(recipe_file)
         return revision
 
-    def _write(self, recipe_file):
+    def _write(self, recipe_file, pulling=False):
+        if not os.path.isfile(recipe_file):
+            raise Exception("Recipe file not exists: %s" % recipe_file)
+
+        if not pulling:
+            print("Recipe sourced from: %s" % recipe_file)
+
         os.makedirs(self._path, exist_ok=True)
 
         with open(self._metadata, "w") as f:
@@ -210,19 +249,8 @@ class Revision:
 
         # compose recipe
         #
-        default_recipe = "~/rezup.toml"
-        if _con_name != Container.DEFAULT_NAME:
-            _recp_con = "~/rezup.%s.toml" % _con_name
-            if os.path.isfile(os.path.expanduser(_recp_con)):
-                default_recipe = _recp_con
-
-        recipe = toml.load(Path(os.path.dirname(__file__)) / "rezup.toml")
-        recipe_file = os.path.expanduser(recipe_file or default_recipe)
-        if os.path.isfile(recipe_file):
-            print("Recipe sourced from: %s" % recipe_file)
-            deep_update(recipe, toml.load(recipe_file))
-        else:
-            print("Recipe not exists: %s" % recipe_file)
+        recipe = toml.load(Container.BASE_RECIPE)
+        deep_update(recipe, toml.load(recipe_file))
 
         # install
         #
@@ -367,8 +395,9 @@ class Revision:
         local = Container.create(_con_name, root=Container.local_root())
         revision = local.get_revision_at_time(self._timestamp, strict=True)
         if revision is None:
+            print("Pulling from remote container %s .." % _con_name)
             revision = Revision(container=local, dirname=self._dirname)
-            revision._write(self._recipe)
+            revision._write(self._recipe, pulling=True)
 
         return revision
 

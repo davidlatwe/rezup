@@ -138,7 +138,8 @@ def cmd_use(name, job=None):
             # for quick first run
             print("Creating default container automatically for first "
                   "run..")
-            revision = container.new_revision()
+            recipe = Container.recipe_file(name, ensure_exists=True)
+            revision = container.new_revision(recipe_file=recipe)
 
     sys.exit(
         revision.use(run_script=job)
@@ -146,6 +147,11 @@ def cmd_use(name, job=None):
 
 
 def cmd_add(name, remote=False, recipe=None, skip_use=False):
+    recipe = recipe or Container.recipe_file(name, ensure_exists=False)
+    if not os.path.isfile(recipe):
+        print("Recipe file not exists: %s" % os.path.abspath(recipe))
+        sys.exit(1)
+
     if remote:
         print("Creating remote container..")
         root = Container.remote_root()
