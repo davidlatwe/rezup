@@ -115,6 +115,12 @@ def run():
 
 def cmd_use(name, job=None):
     container = Container(name)
+
+    if container.is_remote():
+        print("Sourcing remote container..")
+    else:
+        print("Sourcing local container..")
+
     revision = container.get_latest_revision()
 
     if not revision:
@@ -140,7 +146,13 @@ def cmd_use(name, job=None):
 
 
 def cmd_add(name, remote=False, recipe=None, skip_use=False):
-    root = Container.remote_root() if remote else Container.local_root()
+    if remote:
+        print("Creating remote container..")
+        root = Container.remote_root()
+    else:
+        print("Creating local container..")
+        root = Container.local_root()
+
     container = Container.create(name, root=root)
     revision = container.new_revision(recipe_file=recipe)
 
