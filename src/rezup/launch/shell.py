@@ -1,5 +1,6 @@
 
 import os
+import stat
 import shellingham
 from pathlib import Path
 
@@ -10,7 +11,7 @@ LAUNCH_SCRIPTS = {
     "up.bat": ["cmd"],
     "up.csh": ["csh", "tcsh"],
     "up.ps1": ["pwsh", "powershell"],
-    "up.sh": ["sh", "bash", "zsh"],
+    "up.sh":  ["sh", "bash", "zsh"],
 }
 
 
@@ -36,55 +37,58 @@ def provide_default():
     return shell
 
 
-def get_launch_cmd(name, launch_dir, block=True):
-    for script, supported_shells in LAUNCH_SCRIPTS.items():
-        if name in supported_shells:
-            launch_script = str(launch_dir / script)
-            break
-    else:
-        raise Exception("No matching launch script for current shell: %s" % name)
-
-    if name == "cmd":
-        command = [name]
+def get_launch_cmd(shell_name, shell_exec, launch_script, block=True):
+    """"""
+    if shell_name == "cmd":
+        command = [shell_exec]
         if block:
             command += ["/Q", "/K"]
         else:
             command += ["/Q", "/C"]
 
-    elif name in {"powershell", "pwsh"}:
-        command = [name, "-NoLogo", "-File"]
+    elif shell_name in ("powershell", "pwsh"):
+        command = [shell_exec, "-NoLogo", "-File"]
         if block:
             command.insert(1, "-NoExit")
 
     else:
-        command = [name]
+        command = [shell_exec]
 
-    # Must have launch script
-    command.append(launch_script)
+    command.append(str(launch_script))
+
     return command
 
 
-def generate_launch_script(dst, replacements):
-    location = Path(os.path.dirname(__file__))
-    for fname in LAUNCH_SCRIPTS:
-        # read content as binary to avoid platform specific line
-        # normalization (\n -> \r\n)
-        with open(location / fname, "rb") as f:
+def generate_launch_script(shell_name, dst_dir):
+    template = Path(os.path.dirname(__file__))
+
+    for fname, supported_shells in LAUNCH_SCRIPTS.items():
+        if shell_name not in supported_shells:
+            continue
+        # read as binary to avoid platform specific line norm (\n -> \r\n)
+        with open(template / fname, "rb") as f:
             binary = f.read()
         text = binary.decode("utf-8", errors="strict")
-        for key, value in replacements.items():
-            if key == "__REZUP_PROMPT__":
-                value = format_prompt_code(value, fname)
-            text = text.replace(key, value)
 
-        with open(dst / fname, "wb") as f:
+        launch_script = dst_dir / fname
+        with open(launch_script, "wb") as f:
             f.write(text.encode("utf-8"))
 
+        st = os.stat(launch_script)
+        os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
 
-def format_prompt_code(string, script_name):
-    supported_shells = LAUNCH_SCRIPTS[script_name]
-    shell = supported_shells[0]
-    return string.format(**PROMPT_CODES[shell])
+        return launch_script
+
+    raise Exception(
+        "Unsupported shell %r, cannot generate launch script." % shell_name
+    )
+
+
+def format_prompt_code(string, shell_name):
+    codes = PROMPT_CODES.get(shell_name)
+    if codes:
+        return string.format(**codes)
+    return string
 
 
 _PROMPT_CODES_CMD = {
@@ -101,8 +105,12 @@ _PROMPT_CODES_SH = {
 }
 
 PROMPT_CODES = {
-    "cmd": _PROMPT_CODES_CMD,
-    "pwsh": _PROMPT_CODES_PWSH,
-    "csh": _PROMPT_CODES_CSH,
-    "sh": _PROMPT_CODES_SH,
+    "cmd":        _PROMPT_CODES_CMD,
+    "pwsh":       _PROMPT_CODES_PWSH,
+    "powershell": _PROMPT_CODES_PWSH,
+    "csh":        _PROMPT_CODES_CSH,
+    "tcsh":       _PROMPT_CODES_CSH,
+    "sh":         _PROMPT_CODES_SH,
+    "zsh":        _PROMPT_CODES_SH,
+    "bash":       _PROMPT_CODES_SH,
 }

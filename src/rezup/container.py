@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import shutil
+import tempfile
 import subprocess
 import virtualenv
 from io import StringIO
@@ -300,17 +301,6 @@ class Revision:
         for tool in tools:
             installer.install_extension(tool)
 
-        # make launch scripts, for prompt and job run
-        _con_name = self._container.name()
-        _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
-        _prompt_info = (_con_name, _revision_date)
-        prompt_string = "rezup (%s) - %s{linebreak}" % _prompt_info
-
-        replacements = {
-            "__REZUP_PROMPT__": prompt_string,
-        }
-        shell.generate_launch_script(self._path, replacements)
-
     def validate(self):
         is_valid = True
         seconds = float(self._dirname)
@@ -422,6 +412,12 @@ class Revision:
             ])
             # use `pythonfinder` package if need to exclude python from PATH
 
+            shell_name, shell_exec = shell.get_current_shell()
+            # shell exec path could be None if not been detected
+            shell_exec = shell_exec or shell_name
+
+            env["_REZUP_SHELL"] = shell_exec
+
             if run_script:
                 block = False
                 if os.path.isfile(run_script):
@@ -429,10 +425,22 @@ class Revision:
                 else:
                     env["__REZUP_COMMAND__"] = run_script
             else:
+                _con_name = self._container.name()
+                prompt = "rezup (%s){linebreak}" % _con_name
+                prompt = shell.format_prompt_code(prompt, shell_name)
+                env.update({
+                    "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
+                    "REZUP_CONTAINER": _con_name,
+                })
                 block = True
 
-            shell_name, _ = shell.get_current_shell()
-            cmd = shell.get_launch_cmd(shell_name, self._path, block=block)
+            temp_dir = Path(tempfile.mkdtemp())
+            launch_script = shell.generate_launch_script(shell_name, temp_dir)
+
+            cmd = shell.get_launch_cmd(shell_name,
+                                       shell_exec,
+                                       launch_script,
+                                       block=block)
 
             popen = subprocess.Popen(cmd, env=env)
             stdout, stderr = popen.communicate()
@@ -526,6 +534,7 @@ class Installer:
 
     def mark_as_rez_production_install(self, tool, venv_session):
         validator = self._revision.path() / "bin" / ".rez_production_install"
+        # TODO: able to read rez version dynamically ???
         version_py = (
             Path(tool.url) / "src" if tool.edit
             else venv_session.creator.purelib  # site-packages
