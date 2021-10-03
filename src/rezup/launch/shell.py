@@ -2,7 +2,6 @@
 import os
 import stat
 import shellingham
-from pathlib import Path
 
 
 # the script files are modified from virtualenv,
@@ -34,7 +33,7 @@ def provide_default():
     elif os.name == "nt":
         shell = os.environ["COMSPEC"]
     else:
-        raise NotImplementedError(f"OS {os.name!r} support not available")
+        raise NotImplementedError("OS %r support not available" % os.name)
 
     shell, ext = os.path.splitext(os.path.basename(shell))
     shell = shell.lower()
@@ -66,14 +65,14 @@ def get_launch_cmd(shell_name, shell_exec, launch_script, block=True):
 
 def generate_launch_script(shell_name, dst_dir, replacement=None):
     replacement = replacement or dict()
-    templates = Path(os.path.dirname(__file__))
+    templates = os.path.dirname(__file__)
 
     for fname, supported_shells in LAUNCH_SCRIPTS.items():
         if shell_name not in supported_shells:
             continue
 
-        template_script = templates / fname
-        if not template_script.is_file():
+        template_script = os.path.join(templates, fname)
+        if not os.path.isfile(template_script):
             continue
 
         # read as binary to avoid platform specific line norm (\n -> \r\n)
@@ -84,7 +83,7 @@ def generate_launch_script(shell_name, dst_dir, replacement=None):
         for key, value in replacement.items():
             text = text.replace(key, value)
 
-        launch_script = dst_dir / fname
+        launch_script = os.path.join(dst_dir, fname)
         with open(launch_script, "wb") as f:
             f.write(text.encode("utf-8"))
 

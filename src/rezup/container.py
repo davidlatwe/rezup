@@ -430,10 +430,9 @@ class Revision:
                     "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
                 })
 
-            temp_dir = Path(tempfile.mkdtemp())
             launch_script = shell.generate_launch_script(
                 shell_name,
-                dst_dir=temp_dir,
+                dst_dir=tempfile.mkdtemp(),
                 replacement=replacement
             )
             cmd = shell.get_launch_cmd(shell_name,
