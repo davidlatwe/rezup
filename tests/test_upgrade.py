@@ -1,10 +1,14 @@
 
 import time
 import unittest
-from unittest.mock import patch
+try:
+    from unittest.mock import patch  # noqa
+except ImportError:
+    from mock import patch  # noqa, py2
+
 from tests.util import TestBase
-from rezup._version import __version__
-from rezup._vendor.version import Version
+from rezup._version import __version__  # noqa
+from rezup._vendor.version import Version  # noqa
 from rezup.upgrade import fetch_latest_version_from_pypi, auto_upgrade
 
 
