@@ -1,7 +1,15 @@
 
 import os
+import sys
 import stat
 import shellingham
+
+if sys.version_info.major == 2 and os.name == "nt":
+    # patch missing `ctypes.wintypes` member in Py2 for `shellingham.nt`
+    #   TODO: make a shellingham PR
+    from ctypes import wintypes, c_char, POINTER
+    wintypes.CHAR = c_char
+    wintypes.PDWORD = POINTER(wintypes.DWORD)
 
 
 # the script files are modified from virtualenv,
