@@ -4,6 +4,7 @@ import sys
 import json
 import time
 import shutil
+import pkgutil
 import tempfile
 import subprocess
 import virtualenv
@@ -60,6 +61,24 @@ def iter_containers(root):
 
     for dirname in os.listdir(root):
         yield Container(dirname, root=root)
+
+
+def locate_rez_lib(container=None):
+    """Return Rez lib location form container if found
+    Args:
+        container (str, optional): container name, look default container
+            if name not given
+    Returns:
+        (Path): rez lib location if found
+    """
+    name = container or Container.DEFAULT_NAME
+    container = Container(name)
+    revision = container.get_latest_revision()
+    if not revision:
+        raise ContainerError("No valid revision in container %r: %s"
+                             % (container.name(), container.path()))
+
+    return revision.locate_rez_lib()
 
 
 class Container:
@@ -496,6 +515,40 @@ class Revision:
 
         return shell_name, shell_exec
 
+    def locate_rez_lib(self, venv_session=None):
+        """Try finding Rez module location"""
+        if venv_session is None:
+            venv_path = self.path() / "venv" / "rez"
+            venv_session = virtualenv.session_via_cli(args=[str(venv_path)])
+        venv_lib = venv_session.creator.purelib
+
+        # rez may get installed in edit mode, try short route first
+        egg_link = venv_lib / "rez.egg-link"
+        if egg_link.is_file():
+            with open(str(egg_link), "r") as f:
+                package_location = f.readline().strip()
+            if os.path.isdir(package_location):
+                return Path(package_location)
+
+        for importer, modname, pkg in pkgutil.walk_packages([str(venv_lib)]):
+            if pkg and modname == "rez":
+                loader = importer.find_module(modname)
+                try:
+                    path = loader.path  # SourceFileLoader
+                    return Path(path).parent.parent
+                except AttributeError:
+                    path = loader.filename  # ImpLoader, py2
+                    return Path(path).parent
+
+    def get_rez_version(self, venv_session=None):
+        rez_location = self.locate_rez_lib(venv_session)
+        version_py = rez_location / "rez" / "utils" / "_version.py"
+        if version_py.is_file():
+            _locals = {"_rez_version": ""}
+            with open(str(version_py)) as f:
+                exec(f.read(), globals(), _locals)
+            return _locals["_rez_version"]
+
 
 class Tool:
 
@@ -574,27 +627,18 @@ class Installer:
         if make_scripts:
             self.create_production_scripts(tool, venv_session)
             if tool.name == "rez":
-                self.mark_as_rez_production_install(tool, venv_session)
+                self.mark_as_rez_production_install(venv_session)
 
-    def mark_as_rez_production_install(self, tool, venv_session):
+    def mark_as_rez_production_install(self, venv_session):
         validator = self._revision.path() / "bin" / ".rez_production_install"
-        # TODO: able to read rez version dynamically ???
-        version_py = (
-            Path(tool.url) / "src" if tool.edit
-            else venv_session.creator.purelib  # site-packages
-        ) / "rez" / "utils" / "_version.py"
+        rez_version = self._revision.get_rez_version(venv_session)
+        assert rez_version is not None, "Rez version not obtain."
 
-        _locals = {"_rez_version": ""}
-        with open(str(version_py)) as f:
-            exec(f.read(), globals(), _locals)
         with open(str(validator), "w") as f:
-            f.write(_locals["_rez_version"])
+            f.write(rez_version)
+        self._rez_version = rez_version
 
-        self._rez_version = _locals["_rez_version"]
-
-    def create_production_scripts(self,
-                                  tool,
-                                  venv_session):
+    def create_production_scripts(self, tool, venv_session):
         """Create Rez production used binary scripts
 
         The binary script will be executed with Python interpreter flag -E,
