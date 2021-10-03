@@ -141,7 +141,7 @@ def cmd_use(name, job=None):
 
 
 def cmd_add(name, remote=False, recipe=None, skip_use=False):
-    recipe = recipe or Container.recipe_file(name, ensure_exists=False)
+    recipe = str(recipe or Container.recipe_file(name, ensure_exists=False))
     if not os.path.isfile(recipe):
         print("Recipe file not exists: %s" % os.path.abspath(recipe))
         sys.exit(1)
@@ -208,5 +208,5 @@ def cmd_status(name):
         local_con = _locals.get(name)
         if local_con is not None:
             print("  Shared libs:")
-            for lib_name in os.listdir(local_con.libs()):
+            for lib_name in local_con.libs().iterdir():
                 print("    %s" % lib_name)
