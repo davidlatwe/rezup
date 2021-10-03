@@ -115,12 +115,6 @@ def run():
 
 def cmd_use(name, job=None):
     container = Container(name)
-
-    if container.is_remote():
-        print("Sourcing remote container..")
-    else:
-        print("Sourcing local container..")
-
     revision = container.get_latest_revision()
 
     if not revision:
