@@ -16,6 +16,11 @@ LAUNCH_SCRIPTS = {
 
 
 def get_current_shell():
+    """Detect current shell with `shellingham`
+    Note:
+        On POSIX you might mostly get login shell instead of current shell.
+        see rezup/launch/README#shell-detection
+    """
     try:
         name, full_path = shellingham.detect_shell()
         return name, full_path
@@ -59,16 +64,25 @@ def get_launch_cmd(shell_name, shell_exec, launch_script, block=True):
     return command
 
 
-def generate_launch_script(shell_name, dst_dir):
-    template = Path(os.path.dirname(__file__))
+def generate_launch_script(shell_name, dst_dir, replacement=None):
+    replacement = replacement or dict()
+    templates = Path(os.path.dirname(__file__))
 
     for fname, supported_shells in LAUNCH_SCRIPTS.items():
         if shell_name not in supported_shells:
             continue
+
+        template_script = templates / fname
+        if not template_script.is_file():
+            continue
+
         # read as binary to avoid platform specific line norm (\n -> \r\n)
-        with open(template / fname, "rb") as f:
+        with open(template_script, "rb") as f:
             binary = f.read()
         text = binary.decode("utf-8", errors="strict")
+
+        for key, value in replacement.items():
+            text = text.replace(key, value)
 
         launch_script = dst_dir / fname
         with open(launch_script, "wb") as f:

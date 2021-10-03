@@ -1,13 +1,11 @@
 
-if [ -n "${__REZUP_SCRIPT__-}" ] ; then
-    # shellcheck source=/dev/null
-    . "${__REZUP_SCRIPT__}"
+if [ "__REZUP_DO__" == "script" ] ; then
+    . __REZUP_DO_SCRIPT__
     exit $?
 fi
-if [ -n "${__REZUP_COMMAND__-}" ] ; then
-    # shellcheck source=/dev/null
-    "${__REZUP_COMMAND__}"
+if [ "__REZUP_DO__" == "command" ] ; then
+    __REZUP_DO_COMMAND__
     exit $?
 fi
 
-$_REZUP_SHELL -i
+__REZUP_SHELL__ -i

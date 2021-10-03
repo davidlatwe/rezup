@@ -404,45 +404,44 @@ class Revision:
 
         else:
             # Launch subprocess
+            replacement = dict()
+            environment = self._compose_env()
+            shell_name, shell_exec = self._get_shell()
 
-            env = self._compose_env()
-            env["PATH"] = os.pathsep.join([
-                str(self._path / "bin"),
-                env["PATH"]
-            ])
-            # use `pythonfinder` package if need to exclude python from PATH
-
-            shell_name, shell_exec = shell.get_current_shell()
-            # shell exec path could be None if not been detected
-            shell_exec = shell_exec or shell_name
-
-            env["_REZUP_SHELL"] = shell_exec
-
-            if run_script:
+            if run_script and os.path.isfile(run_script):
+                # run shell script and exit
                 block = False
-                if os.path.isfile(run_script):
-                    env["__REZUP_SCRIPT__"] = os.path.abspath(run_script)
-                else:
-                    env["__REZUP_COMMAND__"] = run_script
+                replacement["__REZUP_DO__"] = "script"
+                replacement["__REZUP_DO_SCRIPT__"] = os.path.abspath(run_script)
+
+            elif run_script:
+                # run shell command and exit
+                block = False
+                replacement["__REZUP_DO__"] = "command"
+                replacement["__REZUP_DO_COMMAND__"] = run_script
+
             else:
-                _con_name = self._container.name()
-                prompt = "rezup (%s){linebreak}" % _con_name
-                prompt = shell.format_prompt_code(prompt, shell_name)
-                env.update({
-                    "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
-                    "REZUP_CONTAINER": _con_name,
-                })
+                # interactive shell
                 block = True
+                replacement["__REZUP_SHELL__"] = shell_exec
+                prompt = "rezup (%s) " % self._container.name()
+                prompt = shell.format_prompt_code(prompt, shell_name)
+                environment.update({
+                    "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
+                })
 
             temp_dir = Path(tempfile.mkdtemp())
-            launch_script = shell.generate_launch_script(shell_name, temp_dir)
-
+            launch_script = shell.generate_launch_script(
+                shell_name,
+                dst_dir=temp_dir,
+                replacement=replacement
+            )
             cmd = shell.get_launch_cmd(shell_name,
                                        shell_exec,
                                        launch_script,
                                        block=block)
 
-            popen = subprocess.Popen(cmd, env=env)
+            popen = subprocess.Popen(cmd, env=environment)
             stdout, stderr = popen.communicate()
 
             return popen.returncode
@@ -450,7 +449,29 @@ class Revision:
     def _compose_env(self):
         env = os.environ.copy()
         env.update(self.recipe_env() or {})
+        env.update({
+            "REZUP_CONTAINER": self._container.name(),
+        })
+
+        env["PATH"] = os.pathsep.join([
+            str(self._path / "bin"),
+            env["PATH"]
+        ])
+        # use `pythonfinder` package if need to exclude python from PATH
+
         return env
+
+    def _get_shell(self):
+        shell_name = os.getenv("REZUP_DEFAULT_SHELL")
+        if shell_name:
+            shell_exec = shell_name
+            shell_name, ext = os.path.splitext(os.path.basename(shell_name))
+            shell_name = shell_name.lower()
+        else:
+            shell_name, shell_exec = shell.get_current_shell()
+            shell_exec = shell_exec or shell_name
+
+        return shell_name, shell_exec
 
 
 class Tool:
