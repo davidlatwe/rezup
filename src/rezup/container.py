@@ -2,15 +2,26 @@
 import os
 import sys
 import json
+import time
 import shutil
+import pkgutil
+import tempfile
 import subprocess
 import virtualenv
 from io import StringIO
-from pathlib import Path
 from datetime import datetime
 from dotenv import dotenv_values
-from configparser import ConfigParser
 from distlib.scripts import ScriptMaker
+
+try:
+    from pathlib import Path  # noqa, py3
+except ImportError:
+    from pathlib2 import Path  # noqa, py2
+
+try:
+    from configparser import ConfigParser  # noqa, py3
+except ImportError:
+    from ConfigParser import ConfigParser  # noqa, py2
 
 try:
     from importlib.metadata import Distribution  # noqa
@@ -32,7 +43,19 @@ class ContainerError(Exception):
 #   - [ ] REZUP_CLEAN_AFTER
 
 
+def makedirs(path):
+    path = str(path)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+
+def rmtree(path):
+    path = str(path)
+    shutil.rmtree(path)
+
+
 def iter_containers(root):
+    root = str(root)
     if not (root and os.path.isdir(root)):
         return
 
@@ -89,7 +112,7 @@ class Container:
     @classmethod
     def create(cls, name, root=None):
         root = Path(root) if root else cls.default_root()
-        os.makedirs(root / name, exist_ok=True)
+        makedirs(root / name)
         return Container(name, root)
 
     @classmethod
@@ -118,11 +141,11 @@ class Container:
             file_path = os.path.expanduser("~/rezup.%s.toml" % name)
 
         if ensure_exists:
-            with open(cls.BASE_RECIPE, "r") as r:
-                with open(file_path, "w") as w:
+            with open(str(cls.BASE_RECIPE), "r") as r:
+                with open(str(str(file_path)), "w") as w:
                     w.write(r.read())
 
-        return file_path
+        return Path(file_path)
 
     def root(self):
         """Root path of current container"""
@@ -159,7 +182,7 @@ class Container:
             if not revision:
                 # TODO: don't remove it immediately, mark as purged and
                 #   remove it when $REZUP_CLEAN_AFTER meet
-                shutil.rmtree(self._path)
+                rmtree(self._path)
             else:
                 # TODO: should have better exception type
                 # TODO: need to check revision is in use
@@ -167,8 +190,8 @@ class Container:
 
         # keep tidy, try remove the root of containers if it's now empty
         root = self.root()
-        if os.path.isdir(root) and not os.listdir(root):
-            shutil.rmtree(root)
+        if root.is_dir() and not next(root.iterdir(), None):
+            rmtree(root)
 
     def iter_revision(self, validate=True, latest_first=True):
         if not self.is_exists():
@@ -178,6 +201,7 @@ class Container:
         if not revisions_root.is_dir():
             return
 
+        revisions_root = str(revisions_root)
         for entry in sorted(os.listdir(revisions_root), reverse=latest_first):
             revision = Revision(container=self, dirname=entry)
             if not validate or revision.is_valid():
@@ -202,7 +226,7 @@ class Container:
 class Revision:
 
     def __init__(self, container, dirname=None):
-        dirname = str(dirname or datetime.now().timestamp())
+        dirname = str(dirname or time.time())
 
         self._container = container
         self._dirname = dirname
@@ -221,20 +245,22 @@ class Revision:
 
     @classmethod
     def create(cls, container, recipe_file):
+        recipe_file = Path(recipe_file)
         revision = cls(container=container)
         revision._write(recipe_file)
         return revision
 
     def _write(self, recipe_file, pulling=False):
-        if not os.path.isfile(recipe_file):
+        if not recipe_file.is_file():
             raise Exception("Recipe file not exists: %s" % recipe_file)
 
         if not pulling:
             print("Recipe sourced from: %s" % recipe_file)
 
-        os.makedirs(self._path, exist_ok=True)
+        if not self._path.is_dir():
+            makedirs(self._path)
 
-        with open(self._metadata, "w") as f:
+        with open(str(self._metadata), "w") as f:
             # metadata
             f.write(json.dumps({
                 # "creator":
@@ -249,8 +275,8 @@ class Revision:
 
         # compose recipe
         #
-        recipe = toml.load(Container.BASE_RECIPE)
-        deep_update(recipe, toml.load(recipe_file))
+        recipe = toml.load(str(Container.BASE_RECIPE))
+        deep_update(recipe, toml.load(str(recipe_file)))
 
         # install
         #
@@ -263,7 +289,7 @@ class Revision:
 
         # save recipe, mark as ready
         #
-        with open(self._recipe, "w") as f:
+        with open(str(self._recipe), "w") as f:
             toml.dump(recipe, f)
 
     def _install(self, recipe):
@@ -300,22 +326,11 @@ class Revision:
         for tool in tools:
             installer.install_extension(tool)
 
-        # make launch scripts, for prompt and job run
-        _con_name = self._container.name()
-        _revision_date = self._timestamp.strftime("%m/%d/%Y, %H:%M:%S")
-        _prompt_info = (_con_name, _revision_date)
-        prompt_string = "rezup (%s) - %s{linebreak}" % _prompt_info
-
-        replacements = {
-            "__REZUP_PROMPT__": prompt_string,
-        }
-        shell.generate_launch_script(self._path, replacements)
-
     def validate(self):
         is_valid = True
         seconds = float(self._dirname)
         timestamp = datetime.fromtimestamp(seconds)
-        if os.path.isfile(self._metadata):
+        if self._metadata.is_file():
             self._timestamp = timestamp
         else:
             is_valid = False
@@ -332,7 +347,7 @@ class Revision:
         return self._is_valid
 
     def is_ready(self):
-        return os.path.isfile(self._recipe)
+        return self._recipe.is_file()
 
     def is_remote(self):
         return self._container.is_remote()
@@ -351,7 +366,7 @@ class Revision:
 
     def recipe(self):
         if self.is_ready():
-            return toml.load(self._recipe)
+            return toml.load(str(self._recipe))
 
     def recipe_env(self):
         recipe_env = (self.recipe() or {}).get("env")
@@ -374,7 +389,7 @@ class Revision:
         if self.is_valid():
             # TODO: don't remove it immediately, mark as purged and
             #   remove it when $REZUP_CLEAN_AFTER meet
-            shutil.rmtree(self._path)
+            rmtree(self._path)
 
     def iter_backward(self):
         for revision in self._container.iter_revision(latest_first=True):
@@ -414,27 +429,43 @@ class Revision:
 
         else:
             # Launch subprocess
+            replacement = dict()
+            environment = self._compose_env()
+            shell_name, shell_exec = self._get_shell()
 
-            env = self._compose_env()
-            env["PATH"] = os.pathsep.join([
-                str(self._path / "bin"),
-                env["PATH"]
-            ])
-            # use `pythonfinder` package if need to exclude python from PATH
-
-            if run_script:
+            if run_script and os.path.isfile(run_script):
+                # run shell script and exit
                 block = False
-                if os.path.isfile(run_script):
-                    env["__REZUP_SCRIPT__"] = os.path.abspath(run_script)
-                else:
-                    env["__REZUP_COMMAND__"] = run_script
+                replacement["__REZUP_DO__"] = "script"
+                replacement["__REZUP_DO_SCRIPT__"] = os.path.abspath(run_script)
+
+            elif run_script:
+                # run shell command and exit
+                block = False
+                replacement["__REZUP_DO__"] = "command"
+                replacement["__REZUP_DO_COMMAND__"] = run_script
+
             else:
+                # interactive shell
                 block = True
+                replacement["__REZUP_SHELL__"] = shell_exec
+                prompt = "rezup (%s) " % self._container.name()
+                prompt = shell.format_prompt_code(prompt, shell_name)
+                environment.update({
+                    "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
+                })
 
-            shell_name, _ = shell.get_current_shell()
-            cmd = shell.get_launch_cmd(shell_name, self._path, block=block)
+            launch_script = shell.generate_launch_script(
+                shell_name,
+                dst_dir=tempfile.mkdtemp(),
+                replacement=replacement
+            )
+            cmd = shell.get_launch_cmd(shell_name,
+                                       shell_exec,
+                                       launch_script,
+                                       block=block)
 
-            popen = subprocess.Popen(cmd, env=env)
+            popen = subprocess.Popen(cmd, env=environment)
             stdout, stderr = popen.communicate()
 
             return popen.returncode
@@ -442,7 +473,63 @@ class Revision:
     def _compose_env(self):
         env = os.environ.copy()
         env.update(self.recipe_env() or {})
+        env.update({
+            "REZUP_CONTAINER": self._container.name(),
+        })
+
+        env["PATH"] = os.pathsep.join([
+            str(self._path / "bin"),
+            env["PATH"]
+        ])
+        # use `pythonfinder` package if need to exclude python from PATH
+
         return env
+
+    def _get_shell(self):
+        shell_name = os.getenv("REZUP_DEFAULT_SHELL")
+        if shell_name:
+            shell_exec = shell_name
+            shell_name, ext = os.path.splitext(os.path.basename(shell_name))
+            shell_name = shell_name.lower()
+        else:
+            shell_name, shell_exec = shell.get_current_shell()
+            shell_exec = shell_exec or shell_name
+
+        return shell_name, shell_exec
+
+    def locate_rez_lib(self, venv_session=None):
+        """Try finding Rez module location"""
+        if venv_session is None:
+            venv_path = self.path() / "venv" / "rez"
+            venv_session = virtualenv.session_via_cli(args=[str(venv_path)])
+        venv_lib = venv_session.creator.purelib
+
+        # rez may get installed in edit mode, try short route first
+        egg_link = venv_lib / "rez.egg-link"
+        if egg_link.is_file():
+            with open(str(egg_link), "r") as f:
+                package_location = f.readline().strip()
+            if os.path.isdir(package_location):
+                return Path(package_location)
+
+        for importer, modname, pkg in pkgutil.walk_packages([str(venv_lib)]):
+            if pkg and modname == "rez":
+                loader = importer.find_module(modname)
+                try:
+                    path = loader.path  # SourceFileLoader
+                    return Path(path).parent.parent
+                except AttributeError:
+                    path = loader.filename  # ImpLoader, py2
+                    return Path(path).parent
+
+    def get_rez_version(self, venv_session=None):
+        rez_location = self.locate_rez_lib(venv_session)
+        version_py = rez_location / "rez" / "utils" / "_version.py"
+        if version_py.is_file():
+            _locals = {"_rez_version": ""}
+            with open(str(version_py)) as f:
+                exec(f.read(), globals(), _locals)
+            return _locals["_rez_version"]
 
 
 class Tool:
@@ -522,26 +609,18 @@ class Installer:
         if make_scripts:
             self.create_production_scripts(tool, venv_session)
             if tool.name == "rez":
-                self.mark_as_rez_production_install(tool, venv_session)
+                self.mark_as_rez_production_install(venv_session)
 
-    def mark_as_rez_production_install(self, tool, venv_session):
+    def mark_as_rez_production_install(self, venv_session):
         validator = self._revision.path() / "bin" / ".rez_production_install"
-        version_py = (
-            Path(tool.url) / "src" if tool.edit
-            else venv_session.creator.purelib  # site-packages
-        ) / "rez" / "utils" / "_version.py"
+        rez_version = self._revision.get_rez_version(venv_session)
+        assert rez_version is not None, "Rez version not obtain."
 
-        _locals = {"_rez_version": ""}
-        with open(version_py) as f:
-            exec(f.read(), globals(), _locals)
-        with open(validator, "w") as f:
-            f.write(_locals["_rez_version"])
+        with open(str(validator), "w") as f:
+            f.write(rez_version)
+        self._rez_version = rez_version
 
-        self._rez_version = _locals["_rez_version"]
-
-    def create_production_scripts(self,
-                                  tool,
-                                  venv_session):
+    def create_production_scripts(self, tool, venv_session):
         """Create Rez production used binary scripts
 
         The binary script will be executed with Python interpreter flag -E,
@@ -552,7 +631,7 @@ class Installer:
 
         if tool.edit:
             egg_link = site_packages / ("%s.egg-link" % tool.name)
-            with open(egg_link, "r") as f:
+            with open(str(egg_link), "r") as f:
                 package_location = f.readline().strip()
             path = [str(package_location)]
         else:
@@ -560,7 +639,7 @@ class Installer:
 
         dists = Distribution.discover(name=tool.name, path=path)
         specifications = [
-            f"{ep.name} = {ep.value}"
+            "{ep.name} = {ep.value}".format(ep=ep)
             for dist in dists
             for ep in dist.entry_points
             if ep.group == "console_scripts"
@@ -568,9 +647,9 @@ class Installer:
 
         bin_path = self._revision.path() / "bin"
         if not bin_path.is_dir():
-            os.makedirs(bin_path)
+            makedirs(bin_path)
 
-        maker = ScriptMaker(source_dir=None, target_dir=bin_path)
+        maker = ScriptMaker(source_dir=None, target_dir=str(bin_path))
         maker.executable = str(venv_session.creator.exe)
 
         # Align with wheel
@@ -595,7 +674,7 @@ class Installer:
         return scripts
 
     def create_shared_lib(self, name, requires):
-        lib_path = self._container.libs() / name
+        lib_path = str(self._container.libs() / name)
 
         venv_session = self._default_venv
         python_exec = str(venv_session.creator.exe)
@@ -606,15 +685,15 @@ class Installer:
             # don't make noise
             "--disable-pip-version-check",
             "--target",
-            str(lib_path),
+            lib_path,
         ]
 
         subprocess.check_output(cmd)
 
         # link shared lib with rez venv (the default venv)
         site_packages = venv_session.creator.purelib
-        with open(site_packages / "_shared.pth", "w") as f:
-            f.write(str(lib_path))
+        with open(str(site_packages / "_shared.pth"), "w") as f:
+            f.write(lib_path)
 
 
 def deep_update(dict1, dict2):

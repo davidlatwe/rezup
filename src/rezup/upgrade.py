@@ -2,10 +2,9 @@
 import re
 import os
 import sys
+import time
 import tempfile
 import subprocess
-from pathlib import Path
-from datetime import datetime
 
 
 _pypi_project = "rezup-api"
@@ -17,7 +16,9 @@ _pause_upgrade_period = int(os.getenv("REZUP_UPGRADE_PAUSE",
 
 
 def fetch_latest_version_from_local():
-    src_ver = Path(_local_upgrade_source) / "src" / "rezup" / "_version.py"
+    src_ver = os.path.join(
+        _local_upgrade_source, "src", "rezup", "_version.py"
+    )
 
     g = {"__version__": None}
     with open(src_ver) as f:
@@ -65,8 +66,7 @@ def auto_upgrade():
     from ._vendor import version
     from ._version import __version__
 
-    if datetime.now().timestamp() - get_upgrade_check_time() \
-            < _pause_upgrade_period:
+    if time.time() - get_upgrade_check_time() < _pause_upgrade_period:
         return
 
     current = version.Version(__version__)
@@ -119,14 +119,14 @@ def restart():
 
 
 def update_record_file():
-    return Path(tempfile.gettempdir()) / (".%s.txt" % _pypi_project)
+    return os.path.join(tempfile.gettempdir(), ".%s.txt" % _pypi_project)
 
 
 def get_upgrade_check_time():
     timestamp = 0
     upgrade_record = update_record_file()
 
-    if upgrade_record.is_file():
+    if os.path.isfile(upgrade_record):
 
         with open(upgrade_record, "r") as record:
             line = record.read().strip()
@@ -140,7 +140,7 @@ def get_upgrade_check_time():
 
 
 def log_upgrade_check_time():
-    timestamp = datetime.now().timestamp()
+    timestamp = time.time()
     upgrade_record = update_record_file()
 
     with open(upgrade_record, "w") as record:
