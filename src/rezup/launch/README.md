@@ -1,4 +1,9 @@
 
+## Shell Prompt
+
+You may customize the prompt with environ var `REZUP_PROMPT`, to get the container name for custom prompt, use env var `REZUP_CONTAINER`.
+
+
 ## Set Prompts in Unix Shell
 
 Due to the rcfiles, I cannot change prompt from Rezup launch script.
