@@ -53,16 +53,7 @@ def setup_parser():
     return parser
 
 
-def site_customize():
-    startup_recipe = os.path.expanduser("~/rezup.toml")
-    if not os.path.isfile(startup_recipe):
-        return
-
-    init_cfg = toml.load(startup_recipe).get("init") or dict()
-    script = init_cfg.get("script")
-    if not script or not os.path.isfile(script):
-        return
-
+def exec_init_script(script):
     g = dict(
         __name__=os.path.splitext(os.path.basename(script))[0],
         __file__=script,
@@ -70,6 +61,27 @@ def site_customize():
     with open(script) as f:
         code = compile(f.read(), script, "exec")
         exec(code, g)
+
+
+def init_env(envfile):
+    pass
+
+
+def launch_hook(name):
+    recipe = Container.recipe_file(name, ensure_exists=False)
+    if not recipe.is_file():
+        return
+
+    init_cfg = toml.load(str(recipe)).get("init") or dict()
+    # run local init
+
+    envfile = init_cfg.get("dotenv")
+    if envfile and os.path.isfile(envfile):
+        init_env(envfile)
+
+    script = init_cfg.get("script")
+    if script and os.path.isfile(script):
+        exec_init_script(script)
 
 
 def run():
@@ -89,12 +101,12 @@ def run():
         from .upgrade import show_latest
         sys.exit(show_latest())
 
-    # important step for diversity setup
-    site_customize()
-
     if not (opts.no_upgrade or os.getenv("REZUP_NO_UPGRADE")):
         from .upgrade import auto_upgrade
         auto_upgrade()
+
+    # important step for diversity setup
+    launch_hook(opts.name)
 
     if opts.cmd == "use":
         cmd_use(opts.name, job=opts.do)

@@ -162,14 +162,24 @@ To disable auto upgrade, use command flag `--no-upgrade` or set env var `REZUP_N
 
 ## Environment Variables
 
+Variables that can be taken from `env` or `init.dotenv` field in `rezup.toml`
+
 |Name|Description|
 | --- | --- |
 |REZUP_ROOT_LOCAL|Local root of all containers and metadata, default is `~/.rezup`|
 |REZUP_ROOT_REMOTE|Remote root of all containers but only recipe file|
+|REZUP_DEFAULT_SHELL|Specify shell to use. See [launch/README](src/rezup/launch/README.md#shell-detection).|
+|REZUP_PROMPT|For customizing shell prompt, optional. See [launch/README](src/rezup/launch/README.md#shell-prompt).|
+|REZUP_CONTAINER|Auto set, for customizing shell prompt. See [launch/README](src/rezup/launch/README.md#shell-prompt).|
+|REZUP_TEST_KEEP_TMP|Preserve temp dirs in tests.|
+
+Variables that requires to be set before calling rezup
+
+|Name|Description|
+| --- | --- |
 |REZUP_NO_UPGRADE|Disable auto upgrade if set (any value is valid except empty string)|
 |REZUP_UPGRADE_PAUSE|Pause version check after last upgrade, default 86400 (1 day, in second)|
 |REZUP_UPGRADE_SOURCE|Local source repository for upgrade, check from PyPI if not set.|
-|REZUP_PROMPT|For customizing shell prompt, optional.|
 
 
 ## Shell
