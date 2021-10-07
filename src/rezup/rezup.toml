@@ -2,6 +2,10 @@
 description = "default container revision recipe"
 schema = "rezup-recipe:1.0"
 
+[root]
+local = "~/.rezup"
+remote = ""
+
 [init]
 script = ""
 
