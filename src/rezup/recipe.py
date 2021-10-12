@@ -19,7 +19,7 @@ from ._vendor import toml
 DEFAULT_CONTAINER_NAME = ".main"
 
 
-class BaseRecipe(DictMixin):
+class BaseRecipe(DictMixin, object):
     DEFAULT_RECIPE = (Path(__file__).parent / "rezup.toml").resolve()
 
     def __init__(self, name):
