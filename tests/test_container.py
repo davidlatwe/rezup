@@ -8,42 +8,48 @@ from tests.util import TestBase
 class TestContainer(TestBase):
 
     def test_create(self):
-        container = Container.create("foo")
+        con_name = "foo"
+        container = Container.create(con_name)
+        expected_path = os.path.join(self.root, con_name)
 
-        expected_path = os.path.join(self.root, "foo")
-        self.assertTrue(os.path.isdir(expected_path))
-        self.assertTrue(container.is_exists())
+        self.assertFalse(os.path.isdir(expected_path))
+        self.assertFalse(container.is_exists())
         self.assertTrue(container.is_empty())
 
-    def test_create_revision(self):
-        mock_rez = os.path.join(self.test_dir, "mock", "rez")
-        recipe = {"rez": {"name": "rez", "url": mock_rez}}
-        rezup_toml = self.save_recipe(recipe)
+        self.save_recipe(con_name)
+        container.new_revision()
 
-        container = Container.create("foo")
-        revision = container.new_revision(recipe_file=rezup_toml)
+        self.assertTrue(os.path.isdir(expected_path))
+        self.assertTrue(container.is_exists())
+        self.assertFalse(container.is_empty())
+
+    def test_create_revision(self):
+        con_name = "foo"
+        self.save_recipe(con_name)
+
+        container = Container.create(con_name)
+        revision = container.new_revision()
 
         self.assertTrue(revision.is_valid())
         self.assertTrue(revision.is_ready())
 
     def test_revision_from_remote(self):
+        con_name = "foo"
         self.setup_remote()
 
-        container = Container.create("foo")
+        container = Container.create(con_name)
         self.assertTrue(container.is_remote())
 
-        mock_rez = os.path.join(self.test_dir, "mock", "rez")
-        recipe = {"rez": {"name": "rez", "url": mock_rez}}
-        rezup_toml = self.save_recipe(recipe)
+        self.save_recipe(con_name)
+        revision = container.new_revision()
 
-        revision = container.new_revision(recipe_file=rezup_toml)
         self.assertTrue(revision.is_valid())
         self.assertTrue(revision.is_ready())
         self.assertTrue(revision.is_remote())
 
         pulled_rev = revision.pull()
 
-        local = Container.create("foo", root=Container.local_root())
+        local = Container.create(con_name, force_local=True)
         self.assertFalse(local.is_remote())
 
         local_rev = local.get_latest_revision()
