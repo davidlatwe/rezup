@@ -29,7 +29,7 @@ except ImportError:
     from importlib_metadata import Distribution
 
 from .launch import shell
-from . import recipe as recp_
+from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
 
 
 class ContainerError(Exception):
@@ -59,7 +59,7 @@ def norm_path(path):
 
 
 def iter_containers():
-    for recipe in recp_.ContainerRecipe.iter_recipes():
+    for recipe in ContainerRecipe.iter_recipes():
         name = recipe.name()
         container = Container(name, recipe)
         yield container  # could be remote
@@ -106,11 +106,11 @@ class Container:
     venv will be created locally or re-used if same revision exists in local.
 
     """
-    DEFAULT_NAME = ".main"
+    DEFAULT_NAME = DEFAULT_CONTAINER_NAME
 
     def __init__(self, name=None, recipe=None, force_local=False):
         name = name or self.DEFAULT_NAME
-        recipe = recipe or recp_.ContainerRecipe(name)
+        recipe = recipe or ContainerRecipe(name)
 
         local_root = get_container_root(recipe, remote=False)
         remote_root = get_container_root(recipe, remote=True)
@@ -127,7 +127,7 @@ class Container:
 
     @classmethod
     def create(cls, name, force_local=False):
-        recipe = recp_.ContainerRecipe(name)
+        recipe = ContainerRecipe(name)
         if not recipe.is_file():
             recipe.create()
         return Container(name, recipe, force_local)
@@ -222,7 +222,7 @@ class Revision:
         self._path = self.compose_path(container, dirname)
         self._timestamp = None
         self._is_valid = None
-        self._recipe = recp_.RevisionRecipe(self)
+        self._recipe = RevisionRecipe(self)
         self._metadata = self._path / "revision.json"
 
     @classmethod

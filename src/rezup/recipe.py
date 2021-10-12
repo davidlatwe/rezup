@@ -14,14 +14,16 @@ else:
     from collections.abc import MutableMapping as DictMixin
 
 from ._vendor import toml
-from . import container as con_
+
+
+DEFAULT_CONTAINER_NAME = ".main"
 
 
 class BaseRecipe(DictMixin):
     DEFAULT_RECIPE = (Path(__file__).parent / "rezup.toml").resolve()
 
     def __init__(self, name):
-        self._name = name or con_.Container.DEFAULT_NAME
+        self._name = name or DEFAULT_CONTAINER_NAME
         self._file = None
         self._path = None
         self.__data = None
@@ -94,7 +96,7 @@ class ContainerRecipe(BaseRecipe):
     def __init__(self, name=None):
         super(ContainerRecipe, self).__init__(name)
         _name = self._name
-        if _name and _name != con_.Container.DEFAULT_NAME:
+        if _name and _name != DEFAULT_CONTAINER_NAME:
             self._file = "rezup.%s.toml" % _name
         else:
             self._file = "rezup.toml"
