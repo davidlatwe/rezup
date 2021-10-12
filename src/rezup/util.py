@@ -11,7 +11,7 @@ def locate_rez_lib(container=None):
         (Path): rez lib location if found
     """
     name = container or Container.DEFAULT_NAME
-    container = Container(name)
+    container = Container(name, force_local=True)
     revision = container.get_latest_revision()
     if not revision:
         raise ContainerError("No valid revision in container %r: %s"
