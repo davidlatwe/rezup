@@ -18,7 +18,7 @@ from . import container as con_
 
 
 class BaseRecipe(DictMixin):
-    BASE = (Path(__file__).parent / "rezup.toml").resolve()
+    DEFAULT_RECIPE = (Path(__file__).parent / "rezup.toml").resolve()
 
     def __init__(self, name):
         self._name = name or con_.Container.DEFAULT_NAME
@@ -33,7 +33,7 @@ class BaseRecipe(DictMixin):
         return self.__data
 
     def _load(self):
-        data = toml.load(str(self.BASE))
+        data = toml.load(str(self.DEFAULT_RECIPE))
         path = self.path()
         if path.is_file():
             deep_update(data, toml.load(str(path)))
@@ -89,6 +89,7 @@ class ContainerRecipe(BaseRecipe):
 
     """
     REGEX = re.compile("rezup.?(.*).toml")
+    RECIPES_DIR = Path.home()
 
     def __init__(self, name=None):
         super(ContainerRecipe, self).__init__(name)
@@ -100,7 +101,7 @@ class ContainerRecipe(BaseRecipe):
 
     @classmethod
     def iter_recipes(cls):
-        for item in Path.home().iterdir():
+        for item in cls.RECIPES_DIR.iterdir():
             if not item.is_file():
                 continue
             match = cls.REGEX.search(item.name)
@@ -110,14 +111,24 @@ class ContainerRecipe(BaseRecipe):
 
     def path(self):
         if self._path is None:
-            self._path = Path.home() / self._file
+            self._path = self.RECIPES_DIR / self._file
         return self._path
 
-    def create(self):
+    def create(self, data=None):
+        if not self.RECIPES_DIR.is_dir():
+            self.RECIPES_DIR.mkdir(parents=True)
         path = self.path()
-        with open(str(self.BASE), "r") as r:
-            with open(str(path), "w") as w:
-                w.write(r.read())
+
+        if data:
+            _data = toml.load(str(self.DEFAULT_RECIPE))
+            deep_update(_data, data)
+            with open(str(path), "w") as f:
+                toml.dump(_data, f)
+        else:
+            # read & write as plaintext, so the comment can be preserved
+            with open(str(self.DEFAULT_RECIPE), "r") as r:
+                with open(str(path), "w") as w:
+                    w.write(r.read())
         self._load()
 
 
