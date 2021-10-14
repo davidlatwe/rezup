@@ -41,6 +41,10 @@ class BaseRecipe(DictMixin, object):
             deep_update(data, toml.load(str(path)))
         self.__data = data
 
+    def __repr__(self):
+        return "%s(name=%s, path=%s)" % (
+            self.__class__.__name__, self.name(), self.path())
+
     def __getitem__(self, key):
         return self._data[key]
 
