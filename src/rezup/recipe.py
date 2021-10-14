@@ -20,6 +20,7 @@ DEFAULT_CONTAINER_NAME = ".main"
 
 
 class BaseRecipe(DictMixin, object):
+    """Dict-like baseclass of recipe object"""
     DEFAULT_RECIPE = (Path(__file__).parent / "rezup.toml").resolve()
 
     def __init__(self, name):
@@ -65,23 +66,28 @@ class BaseRecipe(DictMixin, object):
         return self._data.keys()
 
     def path(self):
+        """Returns the path of this recipe, implement in subclass"""
         raise NotImplementedError
 
     def create(self):
+        """Write out recipe content, implement in subclass"""
         raise NotImplementedError
 
     def name(self):
+        """Returns the container name of this recipe corresponding to"""
         return self._name
 
     def data(self):
+        """Returns a copy of parsed recipe file content"""
         return deepcopy(self._data)
 
     def is_file(self):
+        """Returns True if recipe file exists, False otherwise."""
         return self.path().is_file()
 
 
 class ContainerRecipe(BaseRecipe):
-    """Container's recipe
+    """A dict-like representation of container's recipe
 
     The recipe file of default container '.main' will be '~/rezup.toml'
 
@@ -107,6 +113,7 @@ class ContainerRecipe(BaseRecipe):
 
     @classmethod
     def iter_recipes(cls):
+        """Iter all recipe files found in `ContainerRecipe.RECIPES_DIR`"""
         for item in cls.RECIPES_DIR.iterdir():
             if not item.is_file():
                 continue
@@ -116,11 +123,19 @@ class ContainerRecipe(BaseRecipe):
                 yield cls(name)
 
     def path(self):
+        """Returns the file path of this recipe
+        Returns:
+            pathlib.Path
+        """
         if self._path is None:
             self._path = self.RECIPES_DIR / self._file
         return self._path
 
     def create(self, data=None):
+        """Write out recipe content into a .toml file
+        Args:
+            data(dict, optional): Arbitrary data to write out
+        """
         if not self.RECIPES_DIR.is_dir():
             self.RECIPES_DIR.mkdir(parents=True)
         path = self.path()
@@ -139,7 +154,9 @@ class ContainerRecipe(BaseRecipe):
 
 
 class RevisionRecipe(BaseRecipe):
-    """Revision's internal recipe
+    """A dict-like representation of revision's internal recipe
+    Args:
+        revision(Revision): A rezup revision instance
     """
     def __init__(self, revision):
         name = revision.container().name()
@@ -148,11 +165,16 @@ class RevisionRecipe(BaseRecipe):
         self._revision = revision
 
     def path(self):
+        """Returns the file path of this recipe
+        Returns:
+            pathlib.Path
+        """
         if self._path is None:
             self._path = self._revision.path() / self._file
         return self._path
 
     def create(self):
+        """Dump container recipe into current revision"""
         path = self.path()
         container_recipe = self._revision.container().recipe()
         with open(str(path), "w") as f:

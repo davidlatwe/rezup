@@ -8,7 +8,7 @@ def locate_rez_lib(container=None):
         container (str, optional): container name, look default container
             if name not given
     Returns:
-        (Path): rez lib location if found
+        (pathlib.Path): rez lib location if found
     """
     name = container or Container.DEFAULT_NAME
     container = Container(name, force_local=True)
