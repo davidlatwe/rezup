@@ -34,8 +34,7 @@ def setup_parser():
                             help="container name. default: '%s'" % _con_def)
     parser_add.add_argument("-r", "--remote", help="add a remote revision.",
                             action="store_true")
-    parser_add.add_argument("-f", "--file", help="recipe file to make.")
-    parser_add.add_argument("--skip-use", help="add revision and exit.",
+    parser_add.add_argument("-s", "--skip-use", help="add revision and exit.",
                             action="store_true")
 
     # cmd: drop
@@ -101,10 +100,7 @@ def run():
         cmd_use(opts.name, job=opts.do)
 
     if opts.cmd == "add":
-        cmd_add(opts.name,
-                remote=opts.remote,
-                recipe=opts.file,
-                skip_use=opts.skip_use)
+        cmd_add(opts.name, remote=opts.remote, skip_use=opts.skip_use)
 
     elif opts.cmd == "drop":
         cmd_drop(opts.name)
@@ -117,48 +113,38 @@ def cmd_use(name, job=None):
     container = Container(name)
     revision = container.get_latest_revision()
 
-    if not revision:
+    if revision:
+        sys.exit(
+            revision.use(run_script=job)
+        )
+    else:
         if container.is_exists():
             print("Container '%s' exists but has no valid revision: %s"
                   % (container.name(), container.path()))
             sys.exit(1)
 
-        elif container.name() != Container.DEFAULT_NAME:
-            print("Container '%s' not exist, use 'rezup add' to create."
-                  % container.name())
-            sys.exit(1)
-
         else:
             # for quick first run
-            print("Creating default container automatically for first "
-                  "run..")
-            recipe = Container.recipe_file(name, ensure_exists=True)
-            revision = container.new_revision(recipe_file=recipe)
-
-    sys.exit(
-        revision.use(run_script=job)
-    )
+            print("Creating container automatically for first run..")
+            cmd_add(name, job=job)
 
 
-def cmd_add(name, remote=False, recipe=None, skip_use=False):
-    recipe = str(recipe or Container.recipe_file(name, ensure_exists=False))
-    if not os.path.isfile(recipe):
-        print("Recipe file not exists: %s" % os.path.abspath(recipe))
-        sys.exit(1)
-
+def cmd_add(name, remote=False, skip_use=False, job=None):
     if remote:
         print("Creating remote container..")
-        root = Container.remote_root()
+        container = Container.create(name)
+        if not container.is_remote():
+            print("Remote root is not set.")
+            sys.exit(1)
     else:
         print("Creating local container..")
-        root = Container.local_root()
+        container = Container.create(name, force_local=True)
 
-    container = Container.create(name, root=root)
-    revision = container.new_revision(recipe_file=recipe)
+    revision = container.new_revision()
 
     if not skip_use:
         sys.exit(
-            revision.use()
+            revision.use(run_script=job)
         )
 
 
@@ -168,45 +154,27 @@ def cmd_drop(name):
 
 
 def cmd_status(name):
-    local = Container.local_root()
-    remote = Container.remote_root()
-
     # TODO: displaying estimated time of upgrade.
 
-    print("")
-    print("   Local Root: %s" % local)
-    print("  Remote Root: %s" % remote)
-    print("")
+    print("   Name   | Is Remote | Rev Count | Root     ")
+    print("---------------------------------------------")
+    status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
 
-    _locals = {c.name(): c for c in iter_containers(local)}
-    _remotes = {c.name(): c for c in iter_containers(remote)}
-
-    all_containers = set(_locals.keys()).union(_remotes.keys())
-
-    print("   NAME   | LOCAL REV | REMOTE REV ")
-    print("-----------------------------------")
-    status_line = "{name: ^10} {local_revisions: >11} {remote_revisions: >12}"
-
-    for _name in all_containers:
-        local_con = _locals.get(_name)
-        remote_con = _remotes.get(_name)
-
+    for con in iter_containers():
         status = {
-            "name": _name,
-            "local_revisions": "-",
-            "remote_revisions": "-",
+            "name": con.name(),
+            "remote": "O" if con.is_remote() else "-",
+            "rev_count": len(list(con.iter_revision())),
+            "root": con.root(),
         }
-        if local_con is not None:
-            status["local_revisions"] = len(list(local_con.iter_revision()))
-        if remote_con is not None:
-            status["remote_revisions"] = len(list(remote_con.iter_revision()))
-
         print(status_line.format(**status))
 
     if name:
         print("")
-        local_con = _locals.get(name)
+        local_con = Container(name, force_local=True)
         if local_con is not None:
-            print("  Shared libs:")
-            for lib_name in local_con.libs().iterdir():
-                print("    %s" % lib_name)
+            libs = local_con.libs()
+            if libs.is_dir():
+                print("  Shared libs:")
+                for lib_name in local_con.libs().iterdir():
+                    print("    %s" % lib_name)

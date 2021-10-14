@@ -5,7 +5,13 @@ import shutil
 import unittest
 import tempfile
 from contextlib import contextmanager
-from rezup._vendor import toml
+
+try:
+    from pathlib import Path  # noqa, py3
+except ImportError:
+    from pathlib2 import Path  # noqa, py2
+
+from rezup.recipe import ContainerRecipe
 
 
 class TestBase(unittest.TestCase):
@@ -27,6 +33,8 @@ class TestBase(unittest.TestCase):
         os.environ.pop("REZUP_UPGRADE_PAUSE", None)
         os.environ.pop("REZUP_UPGRADE_SOURCE", None)
         os.environ.pop("REZUP_NO_UPGRADE", None)
+
+        ContainerRecipe.RECIPES_DIR = Path(base) / ".recipes"
 
         self.base = base
         self.root = root
@@ -59,18 +67,16 @@ class TestBase(unittest.TestCase):
     def setup_remote(self):
         os.environ["REZUP_ROOT_REMOTE"] = self.remote
 
-    def save_recipe(self, data, subdir=None):
-        level = [self.base, ".recipe"]
-        level += [subdir] if subdir else []
-
-        recipe_dir = os.path.join(*level)
-        os.makedirs(recipe_dir)
-
-        rezup_toml = os.path.join(recipe_dir, "rezup.toml")
-        with open(rezup_toml, "w") as f:
-            toml.dump(data, f)
-
-        return rezup_toml
+    def save_recipe(self, name, data=None, mock_rez=True):
+        data = data or dict()
+        if mock_rez:
+            data.update({"rez": {
+                "name": "rez",
+                "url": os.path.join(self.test_dir, "mock", "rez"),
+            }})
+        recipe = ContainerRecipe(name)
+        recipe.create(data)
+        return recipe
 
 
 @contextmanager

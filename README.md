@@ -52,22 +52,30 @@ To customize the container, you can write a `~/rezup.toml` to tell what should b
 ```toml
 description = "My rez setup"
 
+[root]
+# Where local container is at, supersede $REZUP_ROOT_LOCAL if set
+local = false
+# Where remote container is at, supersede $REZUP_ROOT_REMOTE if set
+remote = false
+
 [rez]
 name = "rez"
-url = "rez>=2.83"
+url = "rez>=2.83"   # a PyPi version specifier or repository path
 
 [[extension]]
 name = "foo"
 url = "~/dev/foo"
-edit = true
+edit = true         # install this in edit mode (pip --edit)
 
 [[extension]]
 name = "bar"
 url = "git+git://github.com/get-bar/bar"
-isolation = true
-python = 2.7
+isolation = true    # additional venv will be created just for this package
+python = 2.7        # the python version for the venv of this package
 
 [shared]
+# Packages that will be shared across all revisions in this container,
+# except extension that has `isolated` set to true.
 name = "production"
 requires = [
     "toml",
@@ -79,16 +87,7 @@ requires = [
 REZ_CONFIG_FILE = "/path/to/rezconfig.py"
 
 ```
-
-The settings in section `rez` and `extension` will be parsed and pass to `pip`, so the `url` can be e.g. a version specifier and the package will be installed from PyPi.
-
-The `edit` can be used if the `url` is a filesystem path that point to the source code and the Rez environment can run in dev-mode.
-
-If the extension has `isolation` set to true, additional venv will be created just for that package. Different Python version (if can be found from system) will be used when `python` entry presented.
-
-For saving revision's creation time, one could add `shared` section in setting for defining dependencies that can be shared across all revisions in one container. Won't be shared with extension that has `isolated` set to true.
-
-Section `env` is for setting environment variables when container revision is being used. However this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](#site-customize) below for better alternative.
+Section `env` is for setting environment variables when container revision is being used. However, this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](#site-customize) below for better alternative.
 
 Recipe file name should embed container name (if not default container) so that command `rezup add <container>` could pick it up when creating corresponding container, for example:
 
@@ -128,11 +127,6 @@ $ rezup add
 create & use new venv into container foo (recipe `~/rezup.foo.toml` will be used)
 ```
 $ rezup add foo
-```
-
-create & use new venv into default container with specific recipe
-```
-$ rezup add --file {rezup.toml}
 ```
 
 create new venv into default remote container
@@ -185,7 +179,7 @@ Please read [launch/README](src/rezup/launch/README.md).
 
 ## Site Customize
 
-YOu could set a python script file in `~/rezup.toml` like so
+You could set a python script file in `~/rezup.toml` like so
 
 ```toml
 # ~/rezup.toml

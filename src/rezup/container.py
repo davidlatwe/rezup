@@ -28,8 +28,8 @@ try:
 except ImportError:
     from importlib_metadata import Distribution
 
-from ._vendor import toml
 from .launch import shell
+from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
 
 
 class ContainerError(Exception):
@@ -54,13 +54,36 @@ def rmtree(path):
     shutil.rmtree(path)
 
 
-def iter_containers(root):
-    root = str(root)
-    if not (root and os.path.isdir(root)):
-        return
+def norm_path(path):
+    return os.path.expanduser(path)
 
-    for dirname in os.listdir(root):
-        yield Container(dirname, root=root)
+
+def iter_containers():
+    for recipe in ContainerRecipe.iter_recipes():
+        name = recipe.name()
+        container = Container(name, recipe)
+        yield container  # could be remote
+        if get_container_root(recipe, remote=False) != container.root():
+            # previous container is remote, now yield local
+            yield Container(name, recipe, force_local=True)
+
+
+def get_container_root(recipe, remote=False):
+    data = recipe.data()
+    if remote:
+        remote = \
+            data["root"]["remote"] \
+            or os.getenv("REZUP_ROOT_REMOTE")
+
+        return Path(norm_path(remote)) if remote else None
+
+    else:
+        local = \
+            data["root"]["local"] \
+            or os.getenv("REZUP_ROOT_LOCAL") \
+            or "~/.rezup"
+
+        return Path(norm_path(local))
 
 
 class Container:
@@ -83,69 +106,31 @@ class Container:
     venv will be created locally or re-used if same revision exists in local.
 
     """
-    DEFAULT_NAME = ".main"
-    BASE_RECIPE = (Path(__file__).parent / "rezup.toml").resolve()
+    DEFAULT_NAME = DEFAULT_CONTAINER_NAME
 
-    def __init__(self, name, root=None):
-        root = Path(root) if root else self.default_root()
+    def __init__(self, name=None, recipe=None, force_local=False):
+        name = name or self.DEFAULT_NAME
+        recipe = recipe or ContainerRecipe(name)
 
-        self._remote = root == self.remote_root()
+        local_root = get_container_root(recipe, remote=False)
+        remote_root = get_container_root(recipe, remote=True)
+        if force_local:
+            root = local_root
+        else:
+            root = remote_root or local_root
+
+        self._remote = root == remote_root
+        self._recipe = recipe
         self._name = name
         self._root = root
         self._path = root / name
 
     @classmethod
-    def local_root(cls):
-        default = os.path.expanduser("~/.rezup")
-        from_env = os.getenv("REZUP_ROOT_LOCAL")
-        return Path(from_env or default)
-
-    @classmethod
-    def remote_root(cls):
-        from_env = os.getenv("REZUP_ROOT_REMOTE")
-        return Path(from_env) if from_env else None
-
-    @classmethod
-    def default_root(cls):
-        return cls.remote_root() or cls.local_root()
-
-    @classmethod
-    def create(cls, name, root=None):
-        root = Path(root) if root else cls.default_root()
-        makedirs(root / name)
-        return Container(name, root)
-
-    @classmethod
-    def recipe_file(cls, name, ensure_exists=False):
-        """Return container specific recipe file path
-
-        The recipe file of default container '.main' will be '~/rezup.toml'
-
-        And for other container, it will be `~/rezup.{name}.toml`
-        for example:
-            * `~/rezup.dev.toml`  -> container `dev`
-            * `~/rezup.test.toml` -> container `test`
-
-        Args:
-            name(str): Container name
-            ensure_exists(bool): If true, default recipe file will be
-                generated if not exists. Default false.
-
-        Returns:
-            str: recipe file path
-
-        """
-        if name == cls.DEFAULT_NAME:
-            file_path = os.path.expanduser("~/rezup.toml")
-        else:
-            file_path = os.path.expanduser("~/rezup.%s.toml" % name)
-
-        if ensure_exists:
-            with open(str(cls.BASE_RECIPE), "r") as r:
-                with open(str(str(file_path)), "w") as w:
-                    w.write(r.read())
-
-        return Path(file_path)
+    def create(cls, name, force_local=False):
+        recipe = ContainerRecipe(name)
+        if not recipe.is_file():
+            recipe.create()
+        return Container(name, recipe, force_local)
 
     def root(self):
         """Root path of current container"""
@@ -158,6 +143,10 @@ class Container:
     def path(self):
         """Path of current container"""
         return self._path
+
+    def recipe(self):
+        """Returns an Recipe instance that binds to this container"""
+        return self._recipe
 
     def libs(self):
         """Root path of current container's shared libraries"""
@@ -219,8 +208,8 @@ class Container:
                         or (not strict and revision.timestamp() <= timestamp)):
                     return revision
 
-    def new_revision(self, recipe_file):
-        return Revision.create(self, recipe_file)
+    def new_revision(self):
+        return Revision.create(self)
 
 
 class Revision:
@@ -233,7 +222,7 @@ class Revision:
         self._path = self.compose_path(container, dirname)
         self._timestamp = None
         self._is_valid = None
-        self._recipe = self._path / "rezup.toml"  # revision internal recipe
+        self._recipe = RevisionRecipe(self)
         self._metadata = self._path / "revision.json"
 
     @classmethod
@@ -244,18 +233,14 @@ class Revision:
         return path
 
     @classmethod
-    def create(cls, container, recipe_file):
-        recipe_file = Path(recipe_file)
+    def create(cls, container):
         revision = cls(container=container)
-        revision._write(recipe_file)
+        revision._write()
         return revision
 
-    def _write(self, recipe_file, pulling=False):
-        if not recipe_file.is_file():
-            raise Exception("Recipe file not exists: %s" % recipe_file)
-
+    def _write(self, pulling=False):
         if not pulling:
-            print("Recipe sourced from: %s" % recipe_file)
+            print("Recipe sourced from: %s" % self._container.recipe().path())
 
         if not self._path.is_dir():
             makedirs(self._path)
@@ -271,26 +256,10 @@ class Revision:
         if not self.is_valid():
             raise Exception("Invalid new revision, this is a bug.")
 
-        _con_name = self._container.name()
-
-        # compose recipe
-        #
-        recipe = toml.load(str(Container.BASE_RECIPE))
-        deep_update(recipe, toml.load(str(recipe_file)))
-
-        # install
-        #
         if not self._container.is_remote():
-            self._install(recipe)
-
-        # cleanup entries that revision doesn't need
-        #
-        recipe.pop("init", None)
-
+            self._install(self._container.recipe())
         # save recipe, mark as ready
-        #
-        with open(str(self._recipe), "w") as f:
-            toml.dump(recipe, f)
+        self._recipe.create()
 
     def _install(self, recipe):
         """Construct Rez virtual environment by recipe
@@ -366,7 +335,7 @@ class Revision:
 
     def recipe(self):
         if self.is_ready():
-            return toml.load(str(self._recipe))
+            return self._recipe
 
     def recipe_env(self):
         recipe_env = (self.recipe() or {}).get("env")
@@ -401,18 +370,36 @@ class Revision:
             if revision.timestamp() > self._timestamp:
                 yield revision
 
-    def pull(self):
+    def pull(self, check_out=True):
+        """Return corresponding local side revision
+
+        If the revision is from remote container, calling this method will
+        find a timestamp matched local revision and create one if not found
+        by default.
+
+        If the revision is from local container, return `self`.
+
+        Args:
+            check_out(bool, optional): When no matched local revision,
+                create one if True or just return None at the end.
+                Default is True.
+
+        Returns:
+            Revision or None
+
+        """
         if not self.is_remote():
-            raise Exception("Cannot pull revision from local container.")
+            return self
 
         # get local
         _con_name = self._container.name()
-        local = Container.create(_con_name, root=Container.local_root())
+        _con_recipe = self._container.recipe()
+        local = Container(_con_name, recipe=_con_recipe, force_local=True)
         revision = local.get_revision_at_time(self._timestamp, strict=True)
-        if revision is None:
+        if revision is None and check_out:
             print("Pulling from remote container %s .." % _con_name)
             revision = Revision(container=local, dirname=self._dirname)
-            revision._write(self._recipe, pulling=True)
+            revision._write(pulling=True)
 
         return revision
 
@@ -694,11 +681,3 @@ class Installer:
         site_packages = venv_session.creator.purelib
         with open(str(site_packages / "_shared.pth"), "w") as f:
             f.write(lib_path)
-
-
-def deep_update(dict1, dict2):
-    for key, value in dict2.items():
-        if isinstance(dict1.get(key), dict) and isinstance(value, dict):
-            deep_update(dict1[key], value)
-        else:
-            dict1[key] = value
