@@ -370,16 +370,33 @@ class Revision:
             if revision.timestamp() > self._timestamp:
                 yield revision
 
-    def pull(self):
+    def pull(self, check_out=True):
+        """Return corresponding local side revision
+
+        If the revision is from remote container, calling this method will
+        find a timestamp matched local revision and create one if not found
+        by default.
+
+        If the revision is from local container, return `self`.
+
+        Args:
+            check_out(bool, optional): When no matched local revision,
+                create one if True or just return None at the end.
+                Default is True.
+
+        Returns:
+            Revision or None
+
+        """
         if not self.is_remote():
-            raise Exception("Cannot pull revision from local container.")
+            return self
 
         # get local
         _con_name = self._container.name()
         _con_recipe = self._container.recipe()
         local = Container(_con_name, recipe=_con_recipe, force_local=True)
         revision = local.get_revision_at_time(self._timestamp, strict=True)
-        if revision is None:
+        if revision is None and check_out:
             print("Pulling from remote container %s .." % _con_name)
             revision = Revision(container=local, dirname=self._dirname)
             revision._write(pulling=True)
