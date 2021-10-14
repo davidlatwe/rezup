@@ -179,7 +179,7 @@ Please read [launch/README](src/rezup/launch/README.md).
 
 ## Site Customize
 
-YOu could set a python script file in `~/rezup.toml` like so
+You could set a python script file in `~/rezup.toml` like so
 
 ```toml
 # ~/rezup.toml
