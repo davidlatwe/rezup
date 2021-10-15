@@ -32,6 +32,9 @@ from .launch import shell
 from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
 
 
+_PY2 = sys.version_info.major == 2
+
+
 class ContainerError(Exception):
     pass
 
@@ -347,7 +350,8 @@ class Revision:
         parsed_recipe_env.write(buffer)
 
         buffer.seek(0)  # must reset buffer
-        recipe_env_dict = dotenv_values(stream=buffer)  # noqa
+        kwargs = {"path": buffer} if _PY2 else {"stream": buffer}
+        recipe_env_dict = dotenv_values(**kwargs)  # noqa
 
         return {
             k: v for k, v in recipe_env_dict.items()
