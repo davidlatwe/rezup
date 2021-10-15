@@ -10,8 +10,12 @@ import subprocess
 import virtualenv
 from datetime import datetime
 from dotenv import dotenv_values
-from dotenv.compat import StringIO
 from distlib.scripts import ScriptMaker
+
+try:
+    from dotenv.compat import StringIO  # py2
+except ImportError:
+    from io import StringIO  # py3
 
 try:
     from pathlib import Path  # noqa, py3
