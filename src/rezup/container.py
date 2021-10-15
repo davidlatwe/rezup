@@ -350,7 +350,7 @@ class Revision:
         parsed_recipe_env.write(buffer)
 
         buffer.seek(0)  # must reset buffer
-        kwargs = {"path": buffer} if _PY2 else {"stream": buffer}
+        kwargs = {"dotenv_path": buffer} if _PY2 else {"stream": buffer}
         recipe_env_dict = dotenv_values(**kwargs)  # noqa
 
         return {
