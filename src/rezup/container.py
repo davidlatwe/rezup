@@ -347,7 +347,7 @@ class Revision:
         parsed_recipe_env.write(buffer)
 
         buffer.seek(0)  # must reset buffer
-        recipe_env_dict = dotenv_values(buffer)  # noqa
+        recipe_env_dict = dotenv_values(stream=buffer)  # noqa
 
         return {
             k: v for k, v in recipe_env_dict.items()
