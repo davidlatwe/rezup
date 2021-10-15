@@ -56,6 +56,15 @@ class TestContainer(TestBase):
 
         self.assertEqual(pulled_rev.timestamp(), local_rev.timestamp())
 
+    def test_recipe_env(self):
+        con_name = "foo"
+        self.save_recipe(con_name, {"env": {"bar": "bee"}})
+
+        container = Container.create(con_name)
+        revision = container.new_revision()
+        env = revision.recipe_env()
+        self.assertEqual(env["bar"], "bee")
+
 
 if __name__ == "__main__":
     unittest.main()
