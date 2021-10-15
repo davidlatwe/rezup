@@ -8,10 +8,14 @@ import pkgutil
 import tempfile
 import subprocess
 import virtualenv
-from io import StringIO
 from datetime import datetime
 from dotenv import dotenv_values
 from distlib.scripts import ScriptMaker
+
+try:
+    from dotenv.compat import StringIO  # py2
+except ImportError:
+    from io import StringIO  # py3
 
 try:
     from pathlib import Path  # noqa, py3
@@ -30,6 +34,9 @@ except ImportError:
 
 from .launch import shell
 from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
+
+
+_PY2 = sys.version_info.major == 2
 
 
 class ContainerError(Exception):
@@ -342,12 +349,12 @@ class Revision:
         if not recipe_env:
             return
 
-        buffer = StringIO()
+        stream = StringIO()
         parsed_recipe_env = ConfigParser(recipe_env)
-        parsed_recipe_env.write(buffer)
+        parsed_recipe_env.write(stream)
 
-        buffer.seek(0)  # must reset buffer
-        recipe_env_dict = dotenv_values(stream=buffer)  # noqa
+        stream.seek(0)  # must reset buffer
+        recipe_env_dict = dotenv_values(stream=stream)  # noqa
 
         return {
             k: v for k, v in recipe_env_dict.items()
