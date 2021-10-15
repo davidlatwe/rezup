@@ -8,9 +8,9 @@ import pkgutil
 import tempfile
 import subprocess
 import virtualenv
-from io import StringIO
 from datetime import datetime
 from dotenv import dotenv_values
+from dotenv.compat import StringIO
 from distlib.scripts import ScriptMaker
 
 try:
@@ -345,13 +345,12 @@ class Revision:
         if not recipe_env:
             return
 
-        buffer = StringIO()
+        stream = StringIO()
         parsed_recipe_env = ConfigParser(recipe_env)
-        parsed_recipe_env.write(buffer)
+        parsed_recipe_env.write(stream)
 
-        buffer.seek(0)  # must reset buffer
-        kwargs = {"dotenv_path": buffer} if _PY2 else {"stream": buffer}
-        recipe_env_dict = dotenv_values(**kwargs)  # noqa
+        stream.seek(0)  # must reset buffer
+        recipe_env_dict = dotenv_values(stream=stream)  # noqa
 
         return {
             k: v for k, v in recipe_env_dict.items()
