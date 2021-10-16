@@ -174,11 +174,19 @@ class RevisionRecipe(BaseRecipe):
         return self._path
 
     def create(self):
-        """Dump container recipe into current revision"""
+        """Write revision recipe from it's container"""
         path = self.path()
         container_recipe = self._revision.container().recipe()
         with open(str(path), "w") as f:
             toml.dump(container_recipe.data(), f)
+        self._load()
+
+    def pull(self, revision):
+        """Write revision recipe from other revision"""
+        path = self.path()
+        revision_recipe = revision.recipe()
+        with open(str(path), "w") as f:
+            toml.dump(revision_recipe.data(), f)
         self._load()
 
 
