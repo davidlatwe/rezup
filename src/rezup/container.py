@@ -245,13 +245,25 @@ class Revision:
         revision._write()
         return revision
 
-    def _write(self, pulling=False):
-        if not pulling:
-            print("Recipe sourced from: %s" % self._container.recipe().path())
-
+    def _write(self, pulling=None):
         if not self._path.is_dir():
             makedirs(self._path)
 
+        # write revision recipe
+        if pulling is None:
+            print("Recipe sourced from: %s" % self._container.recipe().path())
+            self._recipe.create()
+        else:
+            self._recipe.pull(pulling)
+
+        if not self.is_valid():
+            raise Exception("Invalid new revision, this is a bug.")
+
+        # install, if at local
+        if not self._container.is_remote():
+            self._install(self._recipe)
+
+        # save metadata, mark revision as ready
         with open(str(self._metadata), "w") as f:
             # metadata
             f.write(json.dumps({
@@ -259,14 +271,6 @@ class Revision:
                 # "hostname":
                 "revision_path": str(self._path),
             }, indent=4))
-
-        if not self.is_valid():
-            raise Exception("Invalid new revision, this is a bug.")
-
-        if not self._container.is_remote():
-            self._install(self._container.recipe())
-        # save recipe, mark as ready
-        self._recipe.create()
 
     def _install(self, recipe):
         """Construct Rez virtual environment by recipe
@@ -306,7 +310,7 @@ class Revision:
         is_valid = True
         seconds = float(self._dirname)
         timestamp = datetime.fromtimestamp(seconds)
-        if self._metadata.is_file():
+        if self._recipe.is_file():
             self._timestamp = timestamp
         else:
             is_valid = False
@@ -323,7 +327,7 @@ class Revision:
         return self._is_valid
 
     def is_ready(self):
-        return self._recipe.is_file()
+        return self._metadata.is_file()
 
     def is_remote(self):
         return self._container.is_remote()
@@ -400,13 +404,13 @@ class Revision:
 
         # get local
         _con_name = self._container.name()
-        _con_recipe = self._container.recipe()
+        _con_recipe = self._container.recipe()  # careful, this affect's root
         local = Container(_con_name, recipe=_con_recipe, force_local=True)
         revision = local.get_revision_at_time(self._timestamp, strict=True)
         if revision is None and check_out:
             print("Pulling from remote container %s .." % _con_name)
             revision = Revision(container=local, dirname=self._dirname)
-            revision._write(pulling=True)
+            revision._write(pulling=self)
 
         return revision
 
