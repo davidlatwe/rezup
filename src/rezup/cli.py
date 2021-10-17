@@ -24,10 +24,8 @@ def setup_parser():
     parser.add_argument("-V", "--version", action="version",
                         help="show version and exit.",
                         version=version_str())
-    parser.add_argument("--check-latest", action="store_true",
+    parser.add_argument("-L", "--check-latest", action=VersionFromPyPI,
                         help="show version of latest rezup(api) and exit.")
-    parser.add_argument("--no-upgrade", action="store_true",
-                        help="disable auto upgrade check.")
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
 
@@ -93,16 +91,8 @@ def run():
 
     opts = parser.parse_args()
 
-    if opts.check_latest:
-        from .upgrade import show_latest
-        sys.exit(show_latest())
-
     # important step for diversity setup
     site_customize()
-
-    if not (opts.no_upgrade or os.getenv("REZUP_NO_UPGRADE")):
-        from .upgrade import auto_upgrade
-        auto_upgrade()
 
     if opts.cmd == "use":
         cmd_use(opts.name, job=opts.do)
@@ -162,8 +152,6 @@ def cmd_drop(name):
 
 
 def cmd_status(name):
-    # TODO: displaying estimated time of upgrade.
-
     print("   Name   | Is Remote | Rev Count | Root     ")
     print("---------------------------------------------")
     status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
@@ -186,3 +174,36 @@ def cmd_status(name):
                 print("  Shared libs:")
                 for lib_name in local_con.libs().iterdir():
                     print("    %s" % lib_name)
+
+
+class VersionFromPyPI(argparse.Action):
+    name = "rezup-api"
+
+    def __init__(self, *args, **kwargs):
+        super(VersionFromPyPI, self).__init__(nargs=0, *args, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(self.fetch_latest_version_from_pypi())
+        parser.exit()
+
+    def fetch_latest_version_from_pypi(self):
+        import re
+        import requests
+
+        _pypi_url = "https://pypi.python.org/simple/{}".format(self.name)
+        _regex_version = re.compile(".*{}-(.*)\\.tar\\.gz".format(self.name))
+        try:
+            response = requests.get(url=_pypi_url, timeout=1)
+        except (requests.exceptions.Timeout, requests.exceptions.ProxyError):
+            pass
+        else:
+            latest_str = ""
+            for line in response.text.split():
+                result = _regex_version.search(line)
+                if result:
+                    latest_str = result.group(1)
+
+            if latest_str:
+                return latest_str
+
+        return "Failed to fetch latest %s version from PyPi.." % self.name

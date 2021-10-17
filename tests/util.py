@@ -30,9 +30,6 @@ class TestBase(unittest.TestCase):
         os.environ["REZUP_ROOT_LOCAL"] = root
         # back to default
         os.environ.pop("REZUP_ROOT_REMOTE", None)
-        os.environ.pop("REZUP_UPGRADE_PAUSE", None)
-        os.environ.pop("REZUP_UPGRADE_SOURCE", None)
-        os.environ.pop("REZUP_NO_UPGRADE", None)
 
         ContainerRecipe.RECIPES_DIR = Path(base) / ".recipes"
 
