@@ -6,12 +6,24 @@ from ._vendor import toml
 from .container import Container, iter_containers
 
 
+def version_str():
+    import rezup._version
+    return "{name} {ver} from {lib} (python {x}.{y})".format(
+        name=rezup.__package__,
+        ver=rezup._version.__version__,
+        lib=rezup.__path__[0],
+        x=sys.version_info.major,
+        y=sys.version_info.minor,
+    )
+
+
 def setup_parser():
     _con_def = Container.DEFAULT_NAME
 
     parser = argparse.ArgumentParser("rezup")
-    parser.add_argument("-V", "--version", action="store_true",
-                        help="show version and exit.")
+    parser.add_argument("-V", "--version", action="version",
+                        help="show version and exit.",
+                        version=version_str())
     parser.add_argument("--check-latest", action="store_true",
                         help="show version of latest rezup(api) and exit.")
     parser.add_argument("--no-upgrade", action="store_true",
@@ -80,10 +92,6 @@ def run():
         sys.argv += ["use", Container.DEFAULT_NAME]
 
     opts = parser.parse_args()
-
-    if opts.version:
-        from rezup._version import print_info
-        sys.exit(print_info())
 
     if opts.check_latest:
         from .upgrade import show_latest
