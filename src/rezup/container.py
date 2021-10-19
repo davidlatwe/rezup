@@ -608,6 +608,7 @@ class Installer:
             self.create_production_scripts(tool, venv_session)
             if tool.name == "rez":
                 self.mark_as_rez_production_install(venv_session)
+                self.register_production_api(venv_session)
 
     def mark_as_rez_production_install(self, venv_session):
         validator = self._revision.path() / "bin" / ".rez_production_install"
@@ -617,6 +618,14 @@ class Installer:
         with open(str(validator), "w") as f:
             f.write(rez_version)
         self._rez_version = rez_version
+
+    def register_production_api(self, venv_session):
+        bin_dir = self._revision.path() / "bin"
+        rez_lib = self._revision.locate_rez_lib(venv_session)
+        locator = bin_dir / ".rez_production_api"
+        rel_path = os.path.relpath(str(rez_lib), str(bin_dir))
+        with open(str(locator), "w") as f:
+            f.write(rel_path)
 
     def create_production_scripts(self, tool, venv_session):
         """Create Rez production used binary scripts
