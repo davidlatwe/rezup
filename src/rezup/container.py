@@ -607,16 +607,25 @@ class Installer:
         if make_scripts:
             self.create_production_scripts(tool, venv_session)
             if tool.name == "rez":
-                self.mark_as_rez_production_install(venv_session)
+                self.mark_as_rez_production_install(tool, venv_session)
+                # TODO: copy completion scripts
 
-    def mark_as_rez_production_install(self, venv_session):
-        validator = self._revision.path() / "bin" / ".rez_production_install"
+    def mark_as_rez_production_install(self, tool, venv_session):
+        rez_bin = self._revision.path() / "bin"
+        validator = rez_bin / ".rez_production_install"
         rez_version = self._revision.get_rez_version(venv_session)
         assert rez_version is not None, "Rez version not obtain."
 
         with open(str(validator), "w") as f:
             f.write(rez_version)
         self._rez_version = rez_version
+
+        if tool.edit:
+            egg_info = os.path.join(tool.url, "src", "rez.egg-info")
+            egg_link = os.path.join(egg_info, ".rez_production_entry")
+            if os.path.isdir(egg_info):
+                with open(egg_link, "w") as f:
+                    f.write(str(rez_bin))
 
     def create_production_scripts(self, tool, venv_session):
         """Create Rez production used binary scripts
