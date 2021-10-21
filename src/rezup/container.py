@@ -349,6 +349,7 @@ class Revision:
             return self._recipe
 
     def recipe_env(self):
+        # TODO: support per platform env
         recipe = self.recipe() or {}
         env = {}
 
