@@ -25,15 +25,15 @@ def locate_rez_lib(container=None, create=False):
     return revision.locate_rez_lib()
 
 
-def resolve_environ(package_requests, container=None, create=False, **kwargs):
+def resolve_environ(requests_or_rxt, container=None, create=False, **kwargs):
     """Resolve package requests with Rez imported from container
 
     This will try to locate Rez lib from container, insert into sys.path,
     and import rez to do the resolve.
 
     Args:
-        package_requests: List of strings or PackageRequest objects
-            representing the request.
+        requests_or_rxt: List of strings or list of PackageRequest objects,
+            or, a resolved context RXT file.
         container (str, optional): container name, use default container
             if name not given.
         create (bool, optional): create local revision if not exists,
@@ -56,7 +56,11 @@ def resolve_environ(package_requests, container=None, create=False, **kwargs):
         sys.path.insert(0, str(lib))
         from rez.resolved_context import ResolvedContext
 
-        context = ResolvedContext(package_requests, **kwargs)
+        if isinstance(requests_or_rxt, list):
+            context = ResolvedContext(requests_or_rxt, **kwargs)
+        else:
+            context = ResolvedContext.load(requests_or_rxt)
+
         return context.get_environ()
 
 
