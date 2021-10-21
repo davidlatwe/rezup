@@ -52,6 +52,9 @@ To customize the container, you can write a `~/rezup.toml` to tell what should b
 ```toml
 description = "My rez setup"
 
+# the .env file will be loaded when container revision is being used
+dotenv = "/path/to/my.env"
+
 [root]
 # Where local container is at, supersede $REZUP_ROOT_LOCAL if set
 local = false
@@ -84,10 +87,11 @@ requires = [
 ]
 
 [env]
+# these will be loaded when container revision is being used
 REZ_CONFIG_FILE = "/path/to/rezconfig.py"
+MY_CUSTOMS_ENV = "my value"
 
 ```
-Section `env` is for setting environment variables when container revision is being used. However, this feature can be hard to debug when something goes wrong, because it's per revision setting and currently no tool for iterating those `.toml` between revisions for debug. See [Site Customize](#site-customize) below for better alternative.
 
 Recipe file name should embed container name (if not default container) so that command `rezup add <container>` could pick it up when creating corresponding container, for example:
 
@@ -160,25 +164,3 @@ $ rezup status
 ## Shell
 
 Please read [launch/README](src/rezup/launch/README.md).
-
-
-## Site Customize
-
-You could set a python script file in `~/rezup.toml` like so
-
-```toml
-# ~/rezup.toml
-[init]
-script = "/path/to/script.py"
-```
-
-If set, the script will be executed immediately on rezup launch. Which means, all the operations will be affected by that script. This also enabled to provide different setup base on username or other arguments.
-
-Current use case is to load and set environment variables.
-
-```python
-# /path/to/script.py
-import os
-from dotenv import load_dotenv
-load_dotenv(os.path.splitext(__file__)[0] + ".env")
-```
