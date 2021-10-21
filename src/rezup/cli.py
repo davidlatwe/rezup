@@ -1,8 +1,6 @@
 
-import os
 import sys
 import argparse
-from ._vendor import toml
 from .container import Container, iter_containers
 
 
@@ -63,25 +61,6 @@ def setup_parser():
     return parser
 
 
-def site_customize():
-    startup_recipe = os.path.expanduser("~/rezup.toml")
-    if not os.path.isfile(startup_recipe):
-        return
-
-    init_cfg = toml.load(startup_recipe).get("init") or dict()
-    script = init_cfg.get("script")
-    if not script or not os.path.isfile(script):
-        return
-
-    g = dict(
-        __name__=os.path.splitext(os.path.basename(script))[0],
-        __file__=script,
-    )
-    with open(script) as f:
-        code = compile(f.read(), script, "exec")
-        exec(code, g)
-
-
 def run():
     parser = setup_parser()
 
@@ -90,9 +69,6 @@ def run():
         sys.argv += ["use", Container.DEFAULT_NAME]
 
     opts = parser.parse_args()
-
-    # important step for diversity setup
-    site_customize()
 
     if opts.cmd == "use":
         cmd_use(opts.name, job=opts.do)
