@@ -349,21 +349,34 @@ class Revision:
             return self._recipe
 
     def recipe_env(self):
-        recipe_env = (self.recipe() or {}).get("env")
-        if not recipe_env:
-            return
+        recipe = self.recipe() or {}
+        env = {}
 
-        stream = StringIO()
-        parsed_recipe_env = ConfigParser(recipe_env)
-        parsed_recipe_env.write(stream)
+        recipe_env = recipe.get("env")
+        if recipe_env:
+            stream = StringIO()
+            parsed_recipe_env = ConfigParser(recipe_env)
+            parsed_recipe_env.write(stream)
 
-        stream.seek(0)  # must reset buffer
-        recipe_env_dict = dotenv_values(stream=stream)  # noqa
+            stream.seek(0)  # must reset buffer
+            recipe_env_dict = dotenv_values(stream=stream)  # noqa
 
-        return {
-            k: v for k, v in recipe_env_dict.items()
-            if v is not None  # exclude config section line
-        }
+            env.update({
+                k: v for k, v in recipe_env_dict.items()
+                if v is not None  # exclude config section line
+            })
+
+        dot_env = recipe.get("dotenv")
+        if dot_env:
+            env.update(
+                dotenv_values(dotenv_path=dot_env)
+            )
+
+        env.update({
+            "REZUP_CONTAINER": self._container.name(),
+        })
+
+        return env
 
     def purge(self):
         if self.is_valid():
@@ -471,10 +484,6 @@ class Revision:
     def _compose_env(self):
         env = os.environ.copy()
         env.update(self.recipe_env() or {})
-        env.update({
-            "REZUP_CONTAINER": self._container.name(),
-        })
-
         env["PATH"] = os.pathsep.join([
             str(self._path / "bin"),
             env["PATH"]
