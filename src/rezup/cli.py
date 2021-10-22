@@ -7,7 +7,7 @@ from .container import Container, iter_containers
 def version_str():
     import rezup._version
     return "{name} {ver} from {lib} (python {x}.{y})".format(
-        name=rezup.__package__,
+        name="rezup",
         ver=rezup._version.__version__,
         lib=rezup.__path__[0],
         x=sys.version_info.major,
