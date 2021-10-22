@@ -19,3 +19,5 @@ remote = false
 [rez]
 name = "rez"
 url = "rez>=2.83"
+
+[[extension]]
