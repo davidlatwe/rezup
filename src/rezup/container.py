@@ -4,6 +4,8 @@ import sys
 import json
 import time
 import shutil
+import socket
+import getpass
 import pkgutil
 import platform
 import tempfile
@@ -33,6 +35,7 @@ try:
 except ImportError:
     from importlib_metadata import Distribution
 
+from ._version import __version__
 from .launch import shell
 from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
 
@@ -230,8 +233,9 @@ class Revision:
         self._path = self.compose_path(container, dirname)
         self._timestamp = None
         self._is_valid = None
+        self._metadata = None
         self._recipe = RevisionRecipe(self)
-        self._metadata = self._path / "revision.json"
+        self._metadata_path = self._path / "revision.json"
 
     @classmethod
     def compose_path(cls, container, dirname=None):
@@ -265,11 +269,12 @@ class Revision:
             self._install(self._recipe)
 
         # save metadata, mark revision as ready
-        with open(str(self._metadata), "w") as f:
+        with open(str(self._metadata_path), "w") as f:
             # metadata
             f.write(json.dumps({
-                # "creator":
-                # "hostname":
+                "rezup_version": __version__,
+                "creator": getpass.getuser(),
+                "hostname": socket.gethostname(),
                 "revision_path": str(self._path),
             }, indent=4))
 
@@ -308,7 +313,7 @@ class Revision:
         return self._is_valid
 
     def is_ready(self):
-        return self._metadata.is_file()
+        return self._metadata_path.is_file()
 
     def is_remote(self):
         return self._container.is_remote()
@@ -324,6 +329,13 @@ class Revision:
 
     def container(self):
         return self._container
+
+    def metadata(self):
+        if self.is_valid():
+            if self._metadata is None:
+                with open(str(self._metadata_path), "r") as f:
+                    self._metadata = json.load(f)
+            return self._metadata
 
     def recipe(self):
         if self.is_ready():
