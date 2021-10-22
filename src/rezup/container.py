@@ -527,6 +527,12 @@ class Revision:
 
     def locate_rez_lib(self, venv_session=None):
         """Try finding Rez module location"""
+        if self.is_remote():
+            revision = self.pull(check_out=False)
+            if revision is None:
+                ContainerError("No matched revision in local container.")
+            return revision.locate_rez_lib(venv_session=venv_session)
+
         if venv_session is None:
             venv_path = self.path() / "venv" / "rez"
             venv_session = virtualenv.session_via_cli(args=[str(venv_path)])
@@ -560,6 +566,12 @@ class Revision:
             return _locals["_rez_version"]
 
     def production_bin_dir(self, venv_name=None):
+        if self.is_remote():
+            revision = self.pull(check_out=False)
+            if revision is None:
+                ContainerError("No matched revision in local container.")
+            return revision.production_bin_dir(venv_name=venv_name)
+
         bin_dirname = "Scripts" if platform.system() == "Windows" else "bin"
         venv_bin_dir = self.path() / "venv" / venv_name / bin_dirname
         return venv_bin_dir / "rez"
