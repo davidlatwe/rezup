@@ -251,22 +251,29 @@ class Revision:
         return revision
 
     def _write(self, pulling=None):
+        recipe = self._recipe
+
         if not self._path.is_dir():
             makedirs(self._path)
 
         # write revision recipe
         if pulling is None:
             print("Recipe sourced from: %s" % self._container.recipe().path())
-            self._recipe.create()
+            recipe.create()
         else:
-            self._recipe.pull(pulling)
+            recipe.pull(pulling)
 
         if not self.is_valid():
             raise Exception("Invalid new revision, this is a bug.")
 
+        # manifest
+        rez_ = Tool(recipe["rez"])
+        extensions = [Tool(d) for d in recipe.get("extension", []) if d]
+        shared_lib = recipe.get("shared")
+
         # install, if at local
         if not self._container.is_remote():
-            self._install(self._recipe)
+            self._install(rez_, extensions, shared_lib)
 
         # save metadata, mark revision as ready
         with open(str(self._metadata_path), "w") as f:
@@ -276,21 +283,20 @@ class Revision:
                 "creator": getpass.getuser(),
                 "hostname": socket.gethostname(),
                 "revision_path": str(self._path),
+                "venvs": ["rez"] + [t.name for t in extensions if t.isolation],
             }, indent=4))
 
-    def _install(self, recipe):
+    def _install(self, rez_, extensions=None, shared_lib=None):
         """Construct Rez virtual environment by recipe
         """
-        tools = [Tool(data) for data in recipe.get("extension", [])]
-        shared = recipe.get("shared")
-
+        extensions = extensions or []
         installer = Installer(self)
-        installer.install_rez(Tool(recipe["rez"]))
-        if shared:
-            installer.create_shared_lib(name=shared["name"],
-                                        requires=shared["requires"])
-        for tool in tools:
-            installer.install_extension(tool)
+        installer.install_rez(rez_)
+        if shared_lib:
+            installer.create_shared_lib(name=shared_lib["name"],
+                                        requires=shared_lib["requires"])
+        for ext in extensions:
+            installer.install_extension(ext)
 
     def validate(self):
         is_valid = True
@@ -331,14 +337,14 @@ class Revision:
         return self._container
 
     def metadata(self):
-        if self.is_valid():
+        if self.is_ready():
             if self._metadata is None:
                 with open(str(self._metadata_path), "r") as f:
                     self._metadata = json.load(f)
             return self._metadata
 
     def recipe(self):
-        if self.is_ready():
+        if self.is_valid():
             return self._recipe
 
     def recipe_env(self):
@@ -486,10 +492,21 @@ class Revision:
             return popen.returncode
 
     def _compose_env(self):
+        production_bins = []
+
+        metadata = self.metadata()
+        if metadata and not metadata.get("rezup_version"):
+            # rezup-1.x
+            production_bins.append(self._path / "bin")
+        else:
+            # rezup-2.x
+            for venv_name in metadata.get("venvs", []):
+                production_bins.append(self.production_bin_dir(venv_name))
+
         env = os.environ.copy()
         env.update(self.recipe_env() or {})
         env["PATH"] = os.pathsep.join([
-            str(self._path / "bin"),
+            os.pathsep.join(production_bins),
             env["PATH"]
         ])
         # use `pythonfinder` package if need to exclude python from PATH
@@ -541,6 +558,11 @@ class Revision:
             with open(str(version_py)) as f:
                 exec(f.read(), globals(), _locals)
             return _locals["_rez_version"]
+
+    def production_bin_dir(self, venv_name=None):
+        bin_dirname = "Scripts" if platform.system() == "Windows" else "bin"
+        venv_bin_dir = self.path() / "venv" / venv_name / bin_dirname
+        return venv_bin_dir / "rez"
 
 
 class Tool:
@@ -624,7 +646,7 @@ class Installer:
                 # TODO: copy completion scripts
 
     def mark_as_rez_production_install(self, tool, venv_session):
-        rez_bin = self._revision.path() / "bin"
+        rez_bin = self._revision.production_bin_dir("rez")
         validator = rez_bin / ".rez_production_install"
         rez_version = self._revision.get_rez_version(venv_session)
         assert rez_version is not None, "Rez version not obtain."
@@ -665,7 +687,8 @@ class Installer:
             if ep.group == "console_scripts"
         ]
 
-        bin_path = self._revision.path() / "bin"
+        venv_name = tool.name if tool.isolation else "rez"
+        bin_path = self._revision.production_bin_dir(venv_name)
         if not bin_path.is_dir():
             makedirs(bin_path)
 
