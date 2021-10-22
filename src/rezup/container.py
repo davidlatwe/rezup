@@ -572,7 +572,7 @@ class Installer:
         self._default_venv = venv_session
         self._rez_as_libs = tool
 
-        self.install_package(tool, venv_session)
+        self.install_package(tool, venv_session, patch_scripts=True)
 
     def install_extension(self, tool):
         if tool.isolation:
@@ -584,8 +584,8 @@ class Installer:
             raise Exception("No python venv created, this is a bug.")
 
         if venv_session is not self._default_venv:
-            self.install_package(self._rez_as_libs, venv_session, make_scripts=False)
-        self.install_package(tool, venv_session)
+            self.install_package(self._rez_as_libs, venv_session)
+        self.install_package(tool, venv_session, patch_scripts=True)
 
     def create_venv(self, tool):
         use_python = tool.python or sys.executable
@@ -600,7 +600,7 @@ class Installer:
 
         return session
 
-    def install_package(self, tool, venv_session, make_scripts=True):
+    def install_package(self, tool, venv_session, patch_scripts=False):
         python_exec = str(venv_session.creator.exe)
         cmd = [python_exec, "-m", "pip", "install"]
 
@@ -617,7 +617,7 @@ class Installer:
         print("Installing %s.." % tool.name)
         subprocess.check_output(cmd)
 
-        if make_scripts:
+        if patch_scripts:
             self.create_production_scripts(tool, venv_session)
             if tool.name == "rez":
                 self.mark_as_rez_production_install(tool, venv_session)
