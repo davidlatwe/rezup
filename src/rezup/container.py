@@ -712,5 +712,5 @@ class Installer:
 
         # link shared lib with rez venv (the default venv)
         site_packages = venv_session.creator.purelib
-        with open(str(site_packages / "_shared.pth"), "w") as f:
+        with open(str(site_packages / "_rezup_shared.pth"), "w") as f:
             f.write(lib_path)
