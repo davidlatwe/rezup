@@ -5,6 +5,7 @@ import json
 import time
 import shutil
 import pkgutil
+import platform
 import tempfile
 import subprocess
 import virtualenv
@@ -329,9 +330,30 @@ class Revision:
             return self._recipe
 
     def recipe_env(self):
-        # TODO: support per platform env
+        _platform = platform.system().lower()
         recipe = self.recipe() or {}
         env = {}
+
+        def load_env(**kwargs):
+            return {
+                k: v for k, v in dotenv_values(**kwargs).items()
+                if v is not None  # exclude config section line
+            }
+
+        def file_loader(d):
+            return [d[k] for k in sorted([
+                k for k, v in d.items() if isinstance(v, str)])]
+
+        dot_env = recipe.get("dotenv")
+        if dot_env:
+            # non platform specific dotenv
+            env_files = file_loader(dot_env)
+            if isinstance(dot_env.get(_platform), dict):
+                # platform specific dotenv
+                env_files += file_loader(dot_env[_platform])
+
+            for file in env_files:
+                env.update(load_env(dotenv_path=file))
 
         recipe_env = recipe.get("env")
         if recipe_env:
@@ -340,18 +362,7 @@ class Revision:
             parsed_recipe_env.write(stream)
 
             stream.seek(0)  # must reset buffer
-            recipe_env_dict = dotenv_values(stream=stream)  # noqa
-
-            env.update({
-                k: v for k, v in recipe_env_dict.items()
-                if v is not None  # exclude config section line
-            })
-
-        dot_env = recipe.get("dotenv")
-        if dot_env:
-            env.update(
-                dotenv_values(dotenv_path=dot_env)
-            )
+            env.update(load_env(stream=stream))
 
         env.update({
             "REZUP_CONTAINER": self._container.name(),
