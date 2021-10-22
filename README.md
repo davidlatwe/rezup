@@ -52,14 +52,25 @@ To customize the container, you can write a `~/rezup.toml` to tell what should b
 ```toml
 description = "My rez setup"
 
-# the .env file will be loaded when container revision is being used
-dotenv = "/path/to/my.env"
-
 [root]
 # Where local container is at, supersede $REZUP_ROOT_LOCAL if set
 local = false
 # Where remote container is at, supersede $REZUP_ROOT_REMOTE if set
 remote = false
+
+# the .env file will be loaded when container revision is being used
+[dotenv]
+1 = "/to/my.env"    # non platform specific, load firstly, sort by key
+2 = "/to/other.env"
+[dotenv.linux]
+[dotenv.darwin]
+[dotenv.windows]
+a = "/to/win.env"   # platform specific, load secondly, sort by key
+
+[env]
+# these will be loaded when container revision is being used
+REZ_CONFIG_FILE = "/path/to/rezconfig.py"
+MY_CUSTOMS_ENV = "my value"
 
 [rez]
 name = "rez"
@@ -85,11 +96,6 @@ requires = [
     "pyside2",
     "Qt5.py",
 ]
-
-[env]
-# these will be loaded when container revision is being used
-REZ_CONFIG_FILE = "/path/to/rezconfig.py"
-MY_CUSTOMS_ENV = "my value"
 
 ```
 
