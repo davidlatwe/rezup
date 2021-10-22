@@ -1,4 +1,5 @@
 
+import os
 import sys
 import argparse
 from .container import Container, iter_containers
@@ -61,6 +62,14 @@ def setup_parser():
     return parser
 
 
+def disable_rezup_if_entered():
+    _con = os.getenv("REZUP_CONTAINER")
+    if _con:
+        print("Not allowed inside container, please exit first. "
+              "(current: %s)" % _con)
+        sys.exit(1)
+
+
 def run():
     parser = setup_parser()
 
@@ -69,6 +78,7 @@ def run():
         sys.argv += ["use", Container.DEFAULT_NAME]
 
     opts = parser.parse_args()
+    disable_rezup_if_entered()
 
     if opts.cmd == "use":
         cmd_use(opts.name, job=opts.do)
