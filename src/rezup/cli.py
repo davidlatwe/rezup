@@ -164,22 +164,25 @@ class VersionFromPyPI(argparse.Action):
 
     def fetch_latest_version_from_pypi(self):
         import re
-        import requests
+        try:
+            from urllib.request import urlopen  # noqa, py3
+        except ImportError:
+            from urllib import urlopen    # noqa, py2
 
         _pypi_url = "https://pypi.python.org/simple/{}".format(self.name)
         _regex_version = re.compile(".*{}-(.*)\\.tar\\.gz".format(self.name))
-        try:
-            response = requests.get(url=_pypi_url, timeout=1)
-        except (requests.exceptions.Timeout, requests.exceptions.ProxyError):
-            pass
-        else:
-            latest_str = ""
-            for line in response.text.split():
-                result = _regex_version.search(line)
-                if result:
-                    latest_str = result.group(1)
 
-            if latest_str:
-                return latest_str
+        f = urlopen(_pypi_url)
+        text = f.read().decode("utf-8")
+        f.close()
+
+        latest_str = ""
+        for line in text.split():
+            result = _regex_version.search(line)
+            if result:
+                latest_str = result.group(1)
+
+        if latest_str:
+            return latest_str
 
         return "Failed to fetch latest %s version from PyPi.." % self.name
