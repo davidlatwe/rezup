@@ -226,6 +226,7 @@ class Container:
 class Revision:
 
     def __init__(self, container, dirname=None):
+        # TODO: Maybe suffixing rez version is a good idea ?
         dirname = str(dirname or time.time())
 
         self._container = container
@@ -506,7 +507,7 @@ class Revision:
         env = os.environ.copy()
         env.update(self.recipe_env() or {})
         env["PATH"] = os.pathsep.join([
-            os.pathsep.join(production_bins),
+            os.pathsep.join([str(p) for p in production_bins]),
             env["PATH"]
         ])
         # use `pythonfinder` package if need to exclude python from PATH
