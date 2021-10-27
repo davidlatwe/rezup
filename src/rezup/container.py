@@ -255,9 +255,7 @@ class Revision:
 
     def _write(self, pulling=None):
         recipe = self._recipe
-
-        if not self._path.is_dir():
-            makedirs(self._path)
+        makedirs(self._path)
 
         # write revision recipe
         if pulling is None:
@@ -704,8 +702,7 @@ class Installer:
 
         venv_name = tool.name if tool.isolation else "rez"
         bin_path = self._revision.production_bin_dir(venv_name)
-        if not bin_path.is_dir():
-            makedirs(bin_path)
+        makedirs(bin_path)
 
         maker = ScriptMaker(source_dir=None, target_dir=str(bin_path))
         maker.executable = str(venv_session.creator.exe)
