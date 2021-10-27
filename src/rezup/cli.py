@@ -192,4 +192,4 @@ class VersionFromPyPI(argparse.Action):
         if latest_str:
             return latest_str
 
-        return "Failed to fetch latest %s version from PyPi.." % self.name
+        return "Failed to fetch latest %s version from PyPI.." % self.name
