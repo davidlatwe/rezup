@@ -494,21 +494,10 @@ class Revision:
             return popen.returncode
 
     def _compose_env(self):
-        production_bins = []
-
-        metadata = self.metadata()
-        if metadata and not metadata.get("rezup_version"):
-            # rezup-1.x
-            production_bins.append(self._path / "bin")
-        else:
-            # rezup-2.x
-            for venv_name in metadata.get("venvs", []):
-                production_bins.append(self.production_bin_dir(venv_name))
-
         env = os.environ.copy()
         env.update(self.recipe_env() or {})
         env["PATH"] = os.pathsep.join([
-            os.pathsep.join([str(p) for p in production_bins]),
+            os.pathsep.join([str(p) for p in self.production_bin_dirs()]),
             env["PATH"]
         ])
         # use `pythonfinder` package if need to exclude python from PATH
@@ -532,22 +521,23 @@ class Revision:
         """
         @functools.wraps(method)  # noqa
         def wrapper(self, *args, **kwargs):
-            if self.is_remote() and self.pull(check_out=False) is None:
+            if not self.is_remote():
+                return method(self, *args, **kwargs)  # noqa
+
+            revision = self.pull(check_out=False)
+            if revision is None:
                 raise ContainerError(
                     "This revision is from remote container, no matched found "
                     "in local. Possible not been pulled into local yet."
                 )
-            return method(self, *args, **kwargs)  # noqa
+
+            return getattr(revision, method.__name__)(self, *args, **kwargs)
 
         return wrapper
 
     @_require_local  # noqa
     def locate_rez_lib(self, venv_session=None):
         """Returns rez module location in this revision"""
-        if self.is_remote():
-            revision = self.pull()
-            return revision.locate_rez_lib(venv_session=venv_session)
-
         if venv_session is None:
             venv_path = self.path() / "venv" / "rez"
             venv_session = virtualenv.session_via_cli(args=[str(venv_path)])
@@ -583,15 +573,26 @@ class Revision:
             return _locals["_rez_version"]
 
     @_require_local  # noqa
-    def production_bin_dir(self, venv_name=None):
+    def production_bin_dir(self, venv_name):
         """Returns production bin scripts dir in this revision"""
-        if self.is_remote():
-            revision = self.pull()
-            return revision.production_bin_dir(venv_name=venv_name)
-
         bin_dirname = "Scripts" if platform.system() == "Windows" else "bin"
         venv_bin_dir = self.path() / "venv" / venv_name / bin_dirname
         return venv_bin_dir / "rez"
+
+    @_require_local  # noqa
+    def production_bin_dirs(self):
+        bin_dirs = []
+
+        metadata = self.metadata()
+        if metadata and not metadata.get("rezup_version"):
+            # rezup-1.x
+            bin_dirs.append(self._path / "bin")
+        else:
+            # rezup-2.x
+            for venv_name in metadata.get("venvs", []):
+                bin_dirs.append(self.production_bin_dir(venv_name))
+
+        return bin_dirs
 
 
 class Tool:
