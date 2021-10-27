@@ -107,11 +107,6 @@ Recipe file name should embed container name (if not default container) so that 
 * `~/rezup.{name}.toml` for container `{name}`
 
 
-### Caveat
-
-Rez production install validation will failed, due to Rezup manages entrypoints a bit like [pipx](https://github.com/pipxproject/pipx), which is different from the setup of Rez install script. So e.g. `rez-env` can not nesting context (rez bin tools will not be appended in `PATH`), without [changing](https://github.com/davidlatwe/rez/commit/4bc4729c73ab61294cfb8fda24b4b9cf1b060e08) production install validation mechanism.
-
-
 ## Commands
 
 use default container `.main`
