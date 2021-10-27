@@ -692,16 +692,24 @@ class Installer:
         else:
             path = [str(site_packages)]
 
+        venv_name = tool.name if tool.isolation else "rez"
+        bin_path = self._revision.production_bin_dir(venv_name)
+
         dists = Distribution.discover(name=tool.name, path=path)
-        specifications = [
-            "{ep.name} = {ep.value}".format(ep=ep)
+        specifications = {
+            ep.name: "{ep.name} = {ep.value}".format(ep=ep)
             for dist in dists
             for ep in dist.entry_points
             if ep.group == "console_scripts"
-        ]
+        }
 
-        venv_name = tool.name if tool.isolation else "rez"
-        bin_path = self._revision.production_bin_dir(venv_name)
+        # delete bin files written into virtualenv
+        # this also avoided naming conflict between script 'rez' and dir 'rez'
+        for script_name in specifications.keys():
+            script_path = bin_path / script_name
+            if script_path.is_file():
+                os.remove(str(script_path))
+
         makedirs(bin_path)
 
         maker = ScriptMaker(source_dir=None, target_dir=str(bin_path))
@@ -722,7 +730,7 @@ class Installer:
         maker.set_mode = True
 
         scripts = maker.make_multiple(
-            specifications=specifications,
+            specifications=specifications.values(),
             options=dict(interpreter_args=["-E"])
         )
 
