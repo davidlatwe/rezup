@@ -10,13 +10,17 @@
 
 ### What is this ?
 
-A Rez production virtual environment management tool, which allows safe environment update without any interruption. Plus a convenient virtual environment setup interface.
+A cross-platform Rez production virtual environment management tool, which allows safe environment update without any interruption. Plus a convenient virtual environment setup interface.
 
 ## Install
 
+This installs the `rezup` full package.
 ```
-# python 3+
 $ pip install rezup
+```
+To **upgrade**, you only need to upgrade the API part. So to avoid re-creating console-script.
+```
+$ pip install -U rezup-api
 ```
 
 ## Quick start
@@ -25,7 +29,7 @@ By typing `rezup` in terminal, a container named `.main` will be created under `
 
 ### Container
 
-A *container* is a Rez environment. And each container holds at least one virtual environment folder named by timestamp, which is *revision*. With that convention, latest version of environment can be provided without affecting existing user.
+A *container* is a Rez environment. And each container holds at least one virtual environment folder named by timestamp, which is *revision*. With that convention, the latest version of environment can be provided without affecting existing user.
 
 ```
 # Container/Revision structure
