@@ -683,6 +683,7 @@ class Installer:
 
         """
         site_packages = venv_session.creator.purelib
+        bin_path = venv_session.creator.bin_dir
 
         if tool.edit:
             egg_link = site_packages / ("%s.egg-link" % tool.name)
@@ -691,9 +692,6 @@ class Installer:
             path = [str(package_location)]
         else:
             path = [str(site_packages)]
-
-        venv_name = tool.name if tool.isolation else "rez"
-        bin_path = self._revision.production_bin_dir(venv_name)
 
         dists = Distribution.discover(name=tool.name, path=path)
         specifications = {
@@ -710,9 +708,11 @@ class Installer:
             if script_path.is_file():
                 os.remove(str(script_path))
 
-        makedirs(bin_path)
+        venv_name = tool.name if tool.isolation else "rez"
+        prod_bin_path = self._revision.production_bin_dir(venv_name)
+        makedirs(prod_bin_path)
 
-        maker = ScriptMaker(source_dir=None, target_dir=str(bin_path))
+        maker = ScriptMaker(source_dir=None, target_dir=str(prod_bin_path))
         maker.executable = str(venv_session.creator.exe)
 
         # Align with wheel
