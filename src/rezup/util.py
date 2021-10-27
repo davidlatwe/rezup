@@ -2,7 +2,8 @@
 import os
 import sys
 from contextlib import contextmanager
-from .container import Container, ContainerError
+from .container import Container
+from .exceptions import ContainerError
 
 
 def locate_rez_lib(container=None, create=False):

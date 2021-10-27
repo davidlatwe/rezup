@@ -38,13 +38,10 @@ except ImportError:
 from ._version import __version__
 from .launch import shell
 from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
+from .exceptions import ContainerError
 
 
 _PY2 = sys.version_info.major == 2
-
-
-class ContainerError(Exception):
-    pass
 
 
 # TODO:
@@ -531,7 +528,7 @@ class Revision:
         if self.is_remote():
             revision = self.pull(check_out=False)
             if revision is None:
-                ContainerError("No matched revision in local container.")
+                raise ContainerError("No matched revision in local container.")
             return revision.locate_rez_lib(venv_session=venv_session)
 
         if venv_session is None:
@@ -570,7 +567,7 @@ class Revision:
         if self.is_remote():
             revision = self.pull(check_out=False)
             if revision is None:
-                ContainerError("No matched revision in local container.")
+                raise ContainerError("No matched revision in local container.")
             return revision.production_bin_dir(venv_name=venv_name)
 
         bin_dirname = "Scripts" if platform.system() == "Windows" else "bin"
