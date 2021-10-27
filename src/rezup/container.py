@@ -9,6 +9,7 @@ import getpass
 import pkgutil
 import platform
 import tempfile
+import functools
 import subprocess
 import virtualenv
 from datetime import datetime
@@ -526,12 +527,25 @@ class Revision:
 
         return shell_name, shell_exec
 
+    def _require_local(method):  # noqa
+        """Decorator for ensuring local revision exists before action
+        """
+        @functools.wraps(method)  # noqa
+        def wrapper(self, *args, **kwargs):
+            if self.is_remote() and self.pull(check_out=False) is None:
+                raise ContainerError(
+                    "This revision is from remote container, no matched found "
+                    "in local. Possible not been pulled into local yet."
+                )
+            return method(self, *args, **kwargs)  # noqa
+
+        return wrapper
+
+    @_require_local  # noqa
     def locate_rez_lib(self, venv_session=None):
-        """Try finding Rez module location"""
+        """Returns rez module location in this revision"""
         if self.is_remote():
-            revision = self.pull(check_out=False)
-            if revision is None:
-                raise ContainerError("No matched revision in local container.")
+            revision = self.pull()
             return revision.locate_rez_lib(venv_session=venv_session)
 
         if venv_session is None:
@@ -557,7 +571,9 @@ class Revision:
                     path = loader.filename  # ImpLoader, py2
                     return Path(path).parent
 
+    @_require_local  # noqa
     def get_rez_version(self, venv_session=None):
+        """Returns rez version installed in this revision"""
         rez_location = self.locate_rez_lib(venv_session)
         version_py = rez_location / "rez" / "utils" / "_version.py"
         if version_py.is_file():
@@ -566,11 +582,11 @@ class Revision:
                 exec(f.read(), globals(), _locals)
             return _locals["_rez_version"]
 
+    @_require_local  # noqa
     def production_bin_dir(self, venv_name=None):
+        """Returns production bin scripts dir in this revision"""
         if self.is_remote():
-            revision = self.pull(check_out=False)
-            if revision is None:
-                raise ContainerError("No matched revision in local container.")
+            revision = self.pull()
             return revision.production_bin_dir(venv_name=venv_name)
 
         bin_dirname = "Scripts" if platform.system() == "Windows" else "bin"
