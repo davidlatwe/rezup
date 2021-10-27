@@ -223,7 +223,6 @@ class Container:
 class Revision:
 
     def __init__(self, container, dirname=None):
-        # TODO: Maybe suffixing rez version is a good idea ?
         dirname = str(dirname or time.time())
 
         self._container = container

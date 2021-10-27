@@ -56,9 +56,6 @@ def setup_parser():
     parser_status = subparsers.add_parser("status", help="Show status of containers")
     parser_status.add_argument("name", nargs="?", help="container name")
 
-    # TODO: able to *pull* revision from container to another
-    # TODO: an interface to pin/tag container revision (if needed)
-
     return parser
 
 
