@@ -67,6 +67,12 @@ def norm_path(path):
 
 
 def iter_containers():
+    """Iterate containers by recipes (~/rezup[.{name}].toml)
+
+    Yields:
+        Container
+
+    """
     for recipe in ContainerRecipe.iter_recipes():
         name = recipe.name()
         container = Container(name, recipe)
