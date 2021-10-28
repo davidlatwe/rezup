@@ -524,7 +524,8 @@ class Revision:
             if not self.is_remote():
                 return method(self, *args, **kwargs)  # noqa
 
-            revision = self.pull(check_out=False)
+            check_out = bool(os.getenv("REZUP_ALWAYS_CHECKOUT"))
+            revision = self.pull(check_out=check_out)
             if revision is None:
                 raise ContainerError(
                     "This revision is from remote container, no matched found "
