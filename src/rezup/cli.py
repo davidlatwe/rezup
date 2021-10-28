@@ -1,7 +1,7 @@
 
 import os
 import sys
-import argparse
+import fire
 from .container import Container, iter_containers
 
 
@@ -16,49 +16,6 @@ def version_str():
     )
 
 
-def setup_parser():
-    _con_def = Container.DEFAULT_NAME
-
-    parser = argparse.ArgumentParser("rezup")
-    parser.add_argument("-V", "--version", action="version",
-                        help="show version and exit.",
-                        version=version_str())
-    parser.add_argument("-L", "--check-latest", action=VersionFromPyPI,
-                        help="show version of latest rezup(api) and exit.")
-
-    subparsers = parser.add_subparsers(dest="cmd", metavar="COMMAND")
-
-    # cmd: use
-    #
-    parser_use = subparsers.add_parser("use", help="use container")
-    parser_use.add_argument("name", nargs="?", default=_con_def,
-                            help="container name. default: '%s'" % _con_def)
-    parser_use.add_argument("-d", "--do",
-                            help="run a shell script or command and exit.")
-
-    # cmd: add
-    #
-    parser_add = subparsers.add_parser("add", help="add container revision")
-    parser_add.add_argument("name", nargs="?", default=_con_def,
-                            help="container name. default: '%s'" % _con_def)
-    parser_add.add_argument("-r", "--remote", help="add a remote revision.",
-                            action="store_true")
-    parser_add.add_argument("-s", "--skip-use", help="add revision and exit.",
-                            action="store_true")
-
-    # cmd: drop
-    #
-    parser_drop = subparsers.add_parser("drop", help="remove container")
-    parser_drop.add_argument("name", help="container name")
-
-    # cmd: status
-    #
-    parser_status = subparsers.add_parser("status", help="Show status of containers")
-    parser_status.add_argument("name", nargs="?", help="container name")
-
-    return parser
-
-
 def disable_rezup_if_entered():
     _con = os.getenv("REZUP_CONTAINER")
     if _con:
@@ -67,129 +24,166 @@ def disable_rezup_if_entered():
         sys.exit(1)
 
 
-def run():
-    parser = setup_parser()
+def prompt_exit(message):
+    print(message)
+    sys.exit(0)
 
+
+def run():
     # for fast access
     if len(sys.argv) == 1:
         sys.argv += ["use", Container.DEFAULT_NAME]
 
-    opts = parser.parse_args()
-    disable_rezup_if_entered()
-
-    if opts.cmd == "use":
-        cmd_use(opts.name, job=opts.do)
-
-    if opts.cmd == "add":
-        cmd_add(opts.name, remote=opts.remote, skip_use=opts.skip_use)
-
-    elif opts.cmd == "drop":
-        cmd_drop(opts.name)
-
-    elif opts.cmd == "status":
-        cmd_status(opts.name)
+    fire.Fire(RezupCLI, name="rezup")
 
 
-def cmd_use(name, job=None):
-    container = Container(name)
-    revision = container.get_latest_revision()
+class RezupCLI:
+    """Rez launching environment manager command line interface
 
-    if revision:
-        sys.exit(
-            revision.use(run_script=job)
-        )
-    else:
-        if container.is_exists():
-            print("Container '%s' exists but has no valid revision: %s"
-                  % (container.name(), container.path()))
-            sys.exit(1)
+    Args:
+        version: show version and exit.
+        check_latest: show version of latest rezup(api) and exit.
 
+    """
+    def __init__(self, version=False, check_latest=False):
+        if version:
+            prompt_exit(self.version)
+        if check_latest:
+            prompt_exit(self.latest)
+
+        disable_rezup_if_entered()
+
+        self._job = None
+
+    @property
+    def version(self):
+        """show version and exit"""
+        return version_str()
+
+    @property
+    def latest(self):
+        """show latest version of rezup(api) from PyPI and exit"""
+        return fetch_latest_version_from_pypi()
+
+    def use(self, name=Container.DEFAULT_NAME, do=None):
+        """Use container
+
+        Args:
+            name (str): container name
+            do (str): run a shell script or command and exit
+
+        """
+        self._job = do
+
+        container = Container(name)
+        revision = container.get_latest_revision()
+
+        if revision:
+            sys.exit(
+                revision.use(run_script=self._job)
+            )
         else:
-            # for quick first run
-            print("Creating container automatically for first run..")
-            cmd_add(name, job=job)
+            if container.is_exists():
+                print("Container '%s' exists but has no valid revision: %s"
+                      % (container.name(), container.path()))
+                sys.exit(1)
+
+            else:
+                # for quick first run
+                print("Creating container automatically for first run..")
+                self.add(name)
+
+    def add(self, name=Container.DEFAULT_NAME, remote=False, skip_use=False):
+        """Add container revision
+
+        Args:
+            name (str): container name
+            remote (bool): add a remote revision
+            skip_use (bool): add revision and exit
+
+        """
+        if remote:
+            print("Creating remote container..")
+            container = Container.create(name)
+            if not container.is_remote():
+                print("Remote root is not set.")
+                sys.exit(1)
+        else:
+            print("Creating local container..")
+            container = Container.create(name, force_local=True)
+
+        revision = container.new_revision()
+
+        if not skip_use:
+            sys.exit(
+                revision.use(run_script=self._job)
+            )
+
+    def drop(self, name):
+        """Remove container
+
+        Args:
+            name (str): container name
+
+        """
+        container = Container(name)
+        container.purge()
+
+    def status(self, name=None):
+        """Show status of containers
+
+        Args:
+            name (str): show status of specific container if name given
+
+        """
+        print("   Name   | Is Remote | Rev Count | Root     ")
+        print("---------------------------------------------")
+        status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
+
+        for con in iter_containers():
+            status = {
+                "name": con.name(),
+                "remote": "O" if con.is_remote() else "-",
+                "rev_count": len(list(con.iter_revision())),
+                "root": con.root(),
+            }
+            print(status_line.format(**status))
+
+        if name:
+            print("")
+            local_con = Container(name, force_local=True)
+            if local_con is not None:
+                libs = local_con.libs()
+                if libs.is_dir():
+                    print("  Shared libs:")
+                    for lib_name in local_con.libs().iterdir():
+                        print("    %s" % lib_name)
 
 
-def cmd_add(name, remote=False, skip_use=False, job=None):
-    if remote:
-        print("Creating remote container..")
-        container = Container.create(name)
-        if not container.is_remote():
-            print("Remote root is not set.")
-            sys.exit(1)
-    else:
-        print("Creating local container..")
-        container = Container.create(name, force_local=True)
+def fetch_latest_version_from_pypi():
+    import re
 
-    revision = container.new_revision()
+    try:
+        from urllib.request import urlopen  # noqa, py3
+    except ImportError:
+        from urllib import urlopen    # noqa, py2
 
-    if not skip_use:
-        sys.exit(
-            revision.use(run_script=job)
-        )
-
-
-def cmd_drop(name):
-    container = Container(name)
-    container.purge()
-
-
-def cmd_status(name):
-    print("   Name   | Is Remote | Rev Count | Root     ")
-    print("---------------------------------------------")
-    status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
-
-    for con in iter_containers():
-        status = {
-            "name": con.name(),
-            "remote": "O" if con.is_remote() else "-",
-            "rev_count": len(list(con.iter_revision())),
-            "root": con.root(),
-        }
-        print(status_line.format(**status))
-
-    if name:
-        print("")
-        local_con = Container(name, force_local=True)
-        if local_con is not None:
-            libs = local_con.libs()
-            if libs.is_dir():
-                print("  Shared libs:")
-                for lib_name in local_con.libs().iterdir():
-                    print("    %s" % lib_name)
-
-
-class VersionFromPyPI(argparse.Action):
     name = "rezup-api"
 
-    def __init__(self, *args, **kwargs):
-        super(VersionFromPyPI, self).__init__(nargs=0, *args, **kwargs)
+    _pypi_url = "https://pypi.python.org/simple/{}".format(name)
+    _regex_version = re.compile(".*{}-(.*)\\.tar\\.gz".format(name))
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        print(self.fetch_latest_version_from_pypi())
-        parser.exit()
+    f = urlopen(_pypi_url)
+    text = f.read().decode("utf-8")
+    f.close()
 
-    def fetch_latest_version_from_pypi(self):
-        import re
-        try:
-            from urllib.request import urlopen  # noqa, py3
-        except ImportError:
-            from urllib import urlopen    # noqa, py2
+    latest_str = ""
+    for line in text.split():
+        result = _regex_version.search(line)
+        if result:
+            latest_str = result.group(1)
 
-        _pypi_url = "https://pypi.python.org/simple/{}".format(self.name)
-        _regex_version = re.compile(".*{}-(.*)\\.tar\\.gz".format(self.name))
+    if latest_str:
+        return latest_str
 
-        f = urlopen(_pypi_url)
-        text = f.read().decode("utf-8")
-        f.close()
-
-        latest_str = ""
-        for line in text.split():
-            result = _regex_version.search(line)
-            if result:
-                latest_str = result.group(1)
-
-        if latest_str:
-            return latest_str
-
-        return "Failed to fetch latest %s version from PyPI.." % self.name
+    return "Failed to fetch latest %s version from PyPI.." % name
