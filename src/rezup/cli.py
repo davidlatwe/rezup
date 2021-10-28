@@ -34,6 +34,12 @@ def run():
     if len(sys.argv) == 1:
         sys.argv += ["use", Container.DEFAULT_NAME]
 
+    patch_fire_help(my_order=[
+        "use",
+        "add",
+        "drop",
+        "status",
+    ])
     fire.Fire(RezupCLI, name="rezup")
 
 
@@ -187,3 +193,36 @@ def fetch_latest_version_from_pypi():
         return latest_str
 
     return "Failed to fetch latest %s version from PyPI.." % name
+
+
+def patch_fire_help(my_order):
+    """For fixing command order in Fire CLI help text
+
+    When passing a class into Fire, COMMANDS that are showing in help-text
+    are being sorted alphabetically. That's because the COMMANDS are listed
+    by `inspect.getmembers` which will return member in sorted ordering.
+
+    I'd like to maintain my own custom order, hence this patch.
+
+    Args:
+        my_order (list): List of command names
+
+    """
+    from fire import completion
+
+    _original = completion.VisibleMembers
+
+    def VisibleMembers(*args, **kwargs):
+        sorted_members = _original(*args, **kwargs)
+        mapped_members = dict(sorted_members)
+        sorted_names = [n for n, m in sorted_members]
+
+        re_ordered = [
+            (n, mapped_members[n]) for n in my_order if n in sorted_names
+        ] + [
+            (n, mapped_members[n]) for n in sorted_names if n not in my_order
+        ]
+
+        return re_ordered
+
+    completion.VisibleMembers = VisibleMembers
