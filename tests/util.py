@@ -28,9 +28,9 @@ class TestBase(unittest.TestCase):
         remote = os.path.join(base, ".remote")
 
         os.environ["REZUP_ROOT_LOCAL"] = root
-        # back to default
         os.environ.pop("REZUP_ROOT_REMOTE", None)
 
+        # change default recipe path for testing
         ContainerRecipe.RECIPES_DIR = Path(base) / ".recipes"
 
         self.base = base
@@ -64,15 +64,24 @@ class TestBase(unittest.TestCase):
     def setup_remote(self):
         os.environ["REZUP_ROOT_REMOTE"] = self.remote
 
-    def save_recipe(self, name, data=None, mock_rez=True):
+    def save_recipe(self, name, data=None, mock_rez=True, dirname=None):
         data = data or dict()
+
+        if dirname:
+            path = Path(self.base) / dirname  # saving recipe in other place
+        else:
+            path = ContainerRecipe.RECIPES_DIR
+
         if mock_rez:
             data.update({"rez": {
                 "name": "rez",
                 "url": os.path.join(self.test_dir, "mock", "rez"),
             }})
-        recipe = ContainerRecipe(name)
-        recipe.create(data)
+
+        with ContainerRecipe.provisional_recipes(path):
+            recipe = ContainerRecipe(name)
+            recipe.create(data)
+
         return recipe
 
 

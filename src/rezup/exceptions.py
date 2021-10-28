@@ -1,0 +1,4 @@
+
+
+class ContainerError(Exception):
+    pass

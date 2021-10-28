@@ -4,8 +4,9 @@
 name: Upload Python Package (cli)
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - '*.0.0'  # release cli only on major version bump
 
 jobs:
   deploy:

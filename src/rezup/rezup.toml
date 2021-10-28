@@ -6,9 +6,18 @@ schema = "rezup-recipe:1.0"
 local = false
 remote = false
 
-[init]
-script = ""
+[dotenv]
+
+[dotenv.linux]
+
+[dotenv.darwin]
+
+[dotenv.windows]
+
+[env]
 
 [rez]
 name = "rez"
 url = "rez>=2.83"
+
+[[extension]]

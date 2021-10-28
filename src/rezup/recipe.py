@@ -2,6 +2,7 @@
 import re
 import sys
 from copy import deepcopy
+from contextlib import contextmanager
 
 try:
     from pathlib import Path  # noqa, py3
@@ -17,6 +18,7 @@ from ._vendor import toml
 
 
 DEFAULT_CONTAINER_NAME = ".main"
+DEFAULT_CONTAINER_RECIPES = Path.home()
 
 
 class BaseRecipe(DictMixin, object):
@@ -101,7 +103,7 @@ class ContainerRecipe(BaseRecipe):
 
     """
     REGEX = re.compile("rezup.?(.*).toml")
-    RECIPES_DIR = Path.home()
+    RECIPES_DIR = DEFAULT_CONTAINER_RECIPES
 
     def __init__(self, name=None):
         super(ContainerRecipe, self).__init__(name)
@@ -110,6 +112,28 @@ class ContainerRecipe(BaseRecipe):
             self._file = "rezup.%s.toml" % _name
         else:
             self._file = "rezup.toml"
+
+    @classmethod
+    @contextmanager
+    def provisional_recipes(cls, path):
+        """Context for changing recipes root temporarily
+
+        Container recipes should be in user's home directory by defaule, but
+        that could be changed inside this context for the case when you need
+        to operate on machines that have no recipe exists in home directory.
+
+        >>> with ContainerRecipe.provisional_recipes("/to/other/recipes"):
+        >>>     ...
+
+        Args:
+            path (str or path-like): directory path where recipes located
+        """
+        default = cls.RECIPES_DIR
+        try:
+            cls.RECIPES_DIR = Path(path)
+            yield
+        finally:
+            cls.RECIPES_DIR = default
 
     @classmethod
     def iter_recipes(cls):
