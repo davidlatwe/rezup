@@ -111,6 +111,7 @@ def _get_revision(container=None, create=False):
 
 
 # actions
+# notes: maybe the actions could be loaded from entry-points.
 
 _message_wrap = "::rezup.msg.start::%s::rezup.msg.end::"
 _polish_regex = re.compile(_message_wrap % "(.*)")
