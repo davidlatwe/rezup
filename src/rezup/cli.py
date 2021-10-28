@@ -44,11 +44,13 @@ def run():
 
 
 class RezupCLI:
-    """Rez launching environment manager command line interface
+    """Rez launching environment manager
+
+    Run `rezup -` for COMMANDS help.
 
     Args:
         version: Show current version and exit
-        check_latest: Show latest version of rezup(api) in PyPI and exit.
+        latest: Show latest version of rezup(api) in PyPI and exit.
 
     """
     def __init__(self, version=False, latest=False):
@@ -186,13 +188,17 @@ def fetch_latest_version_from_pypi():
 
 
 def patch_fire_help(my_order):
-    """For fixing command order in Fire CLI help text
+    """For patching COMMANDS order in Fire CLI help text
 
     When passing a class into Fire, COMMANDS that are showing in help-text
     are being sorted alphabetically. That's because the COMMANDS are listed
     by `inspect.getmembers` which will return member in sorted ordering.
 
     I'd like to maintain my own custom order, hence this patch.
+
+    Links:
+        https://github.com/google/python-fire/issues/298
+        https://github.com/google/python-fire/pull/310
 
     Args:
         my_order (list): List of command names
