@@ -116,6 +116,18 @@ class ContainerRecipe(BaseRecipe):
     @classmethod
     @contextmanager
     def provisional_recipes(cls, path):
+        """Context for changing recipes root temporarily
+
+        Container recipes should be in user's home directory by defaule, but
+        that could be changed inside this context for the case when you need
+        to operate on machines that have no recipe exists in home directory.
+
+        >>> with ContainerRecipe.provisional_recipes("/to/other/recipes"):
+        >>>     ...
+
+        Args:
+            path (str or path-like): directory path where recipes located
+        """
         default = cls.RECIPES_DIR
         try:
             cls.RECIPES_DIR = Path(path)
