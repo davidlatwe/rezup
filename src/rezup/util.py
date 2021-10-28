@@ -112,7 +112,8 @@ def _get_revision(container=None, create=False):
 
 # actions
 
-_polish_regex = re.compile("rezup:action:start(.*)rezup:action:end")
+_message_wrap = "::rezup.msg.start::%s::rezup.msg.end::"
+_polish_regex = re.compile(_message_wrap % "(.*)")
 
 
 def action(name):
@@ -135,7 +136,7 @@ def polish(message):
 
 
 def flush(message):
-    message = "rezup:action:start%srezup:action:end" % message
+    message = _message_wrap % message
     sys.stdout.write(message)
     sys.stdout.flush()
 
