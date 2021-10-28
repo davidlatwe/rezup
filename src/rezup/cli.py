@@ -51,23 +51,15 @@ class RezupCLI:
         check_latest: Show latest version of rezup(api) in PyPI and exit.
 
     """
-    def __init__(self, version=False, check_latest=False):
+    def __init__(self, version=False, latest=False):
         if version:
-            prompt_exit(self.current_version)
-        if check_latest:
-            prompt_exit(self.latest_version)
+            prompt_exit(version_str())
+        if latest:
+            prompt_exit(fetch_latest_version_from_pypi())
 
         disable_rezup_if_entered()
 
         self._job = None
-
-    @property
-    def current_version(self):
-        return version_str()
-
-    @property
-    def latest_version(self):
-        return fetch_latest_version_from_pypi()
 
     def use(self, name=Container.DEFAULT_NAME, do=None):
         """Use container
