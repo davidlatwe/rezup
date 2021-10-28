@@ -4,7 +4,6 @@ import re
 import sys
 import json
 import subprocess
-from contextlib import contextmanager
 
 
 def locate_rez_lib(container=None, create=False):
@@ -109,17 +108,6 @@ def _get_revision(container=None, create=False):
         raise ContainerError("No matched revision in local container.")
 
     return revision
-
-
-@contextmanager
-def _temporary_session(environ):
-    _os_environ = os.environ.copy()
-    try:
-        os.environ.update(environ)
-        yield
-    finally:
-        os.environ.clear()
-        os.environ.update(_os_environ)
 
 
 # actions
