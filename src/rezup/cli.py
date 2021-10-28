@@ -63,6 +63,31 @@ class RezupCLI:
 
         self._job = None
 
+    def _compose_job(self, do):
+        """Compose the full job command from sys.argv
+
+        For input like the example below, the full command cannot be parsed
+        by fire due to the `-` in there. Hence this helper. Also, quoting
+        is being handled as well. Experimentally..
+
+            $ rezup use -do rez-env -- python -c "print('hello')"
+
+        """
+        self._job = do
+
+        for flag in ["-d", "--do"]:
+            if flag in sys.argv:
+                index = sys.argv.index(flag) + 1
+
+                args = []
+                for a in sys.argv[index:]:
+                    ra = repr(a)
+                    args.append(
+                        ra if "'" in a and not ra.startswith("'") else a
+                    )
+
+                self._job = " ".join(args)
+
     def use(self, name=Container.DEFAULT_NAME, do=None):
         """Use container
 
@@ -71,7 +96,7 @@ class RezupCLI:
             do (str): run a shell script or command and exit
 
         """
-        self._job = do
+        self._compose_job(do)
 
         container = Container(name)
         revision = container.get_latest_revision()
