@@ -30,6 +30,9 @@ class TestBase(unittest.TestCase):
         os.environ["REZUP_ROOT_LOCAL"] = root
         os.environ.pop("REZUP_ROOT_REMOTE", None)
 
+        # change default recipe path for testing
+        ContainerRecipe.RECIPES_DIR = Path(base) / ".recipes"
+
         self.base = base
         self.root = root
         self.remote = remote
@@ -63,8 +66,11 @@ class TestBase(unittest.TestCase):
 
     def save_recipe(self, name, data=None, mock_rez=True, dirname=None):
         data = data or dict()
-        dirname = dirname or ".recipes"
-        path = Path(self.base) / dirname
+
+        if dirname:
+            path = Path(self.base) / dirname  # saving recipe in other place
+        else:
+            path = ContainerRecipe.RECIPES_DIR
 
         if mock_rez:
             data.update({"rez": {
