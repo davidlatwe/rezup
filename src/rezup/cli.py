@@ -30,8 +30,8 @@ def prompt_exit(message):
 
 
 def run():
-    # for fast access
-    if len(sys.argv) == 1:
+    """CLI entry point"""
+    if len(sys.argv) == 1:  # for fast access
         sys.argv += ["use", Container.DEFAULT_NAME]
 
     patch_fire_help(my_order=[
@@ -47,28 +47,26 @@ class RezupCLI:
     """Rez launching environment manager command line interface
 
     Args:
-        version: show version and exit.
-        check_latest: show version of latest rezup(api) and exit.
+        version: Show current version and exit
+        check_latest: Show latest version of rezup(api) in PyPI and exit.
 
     """
     def __init__(self, version=False, check_latest=False):
         if version:
-            prompt_exit(self.version)
+            prompt_exit(self.current_version)
         if check_latest:
-            prompt_exit(self.latest)
+            prompt_exit(self.latest_version)
 
         disable_rezup_if_entered()
 
         self._job = None
 
     @property
-    def version(self):
-        """show version and exit"""
+    def current_version(self):
         return version_str()
 
     @property
-    def latest(self):
-        """show latest version of rezup(api) from PyPI and exit"""
+    def latest_version(self):
         return fetch_latest_version_from_pypi()
 
     def use(self, name=Container.DEFAULT_NAME, do=None):
