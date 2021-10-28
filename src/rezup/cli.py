@@ -46,7 +46,14 @@ def run():
 class RezupCLI:
     """Rez launching environment manager
 
-    Run `rezup -` for COMMANDS help.
+                   * Run `rezup -` for COMMANDS help *
+               * This CLI is powered by google/python-fire *
+
+    A Rez production virtual environment management tool, which allows safe
+    environment update without any interruption. Plus a convenient virtual
+    environment setup interface.
+
+    https://github.com/davidlatwe/rezup
 
     Args:
         version: Show current version and exit
@@ -89,7 +96,21 @@ class RezupCLI:
                 self._job = " ".join(args)
 
     def use(self, name=Container.DEFAULT_NAME, do=None):
-        """Use container
+        """Step into a container. Run `rezup use -h` for help
+
+        This will open a sub-shell which has Rez venv ready to use. Simply
+        type 'exit' when finished.
+
+        Usages:
+
+            - for quick start, auto use default container '.main'
+            $ rezup
+
+            - use container 'foo'
+            $ rezup use foo
+
+            - use foo and do job (non-interactive session)
+            $ rezup use foo --do {script.bat or "quoted command"}
 
         Args:
             name (str): container name
@@ -117,7 +138,21 @@ class RezupCLI:
                 self.add(name)
 
     def add(self, name=Container.DEFAULT_NAME, remote=False, skip_use=False):
-        """Add container revision
+        """Add one container revision. Run `rezup add -h` for help
+
+        This will create a new container revision (a new Rez venv setup) with
+        corresponding recipe file.
+
+        Usages:
+
+            - create & use new rev from container '.main' (with ~/rezup.toml)
+            $ rezup add
+
+            - create & use new rev from container 'foo' (with ~/rezup.foo.toml)
+            $ rezup add foo
+
+            - create new rev from remote container
+            $ rezup add --remote --skip-use
 
         Args:
             name (str): container name
@@ -143,7 +178,15 @@ class RezupCLI:
             )
 
     def drop(self, name):
-        """Remove container
+        """Remove a container. Run `rezup drop -h` for help
+
+        Remove entire container from disk. This command isn't ready yet, use
+        with caution.
+
+        Usages:
+
+            - remove container foo
+            $ rezup drop foo
 
         Args:
             name (str): container name
@@ -153,7 +196,17 @@ class RezupCLI:
         container.purge()
 
     def status(self, name=None):
-        """Show status of containers
+        """Show status of containers. Run `rezup status -h` for help
+
+        Displaying some useful info about current visible containers..
+
+        Usages:
+
+            - list containers and info
+            $ rezup status
+
+            - show detailed info of specific container
+            $ rezup status foo
 
         Args:
             name (str): show status of specific container if name given
