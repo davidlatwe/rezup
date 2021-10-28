@@ -63,7 +63,8 @@ class TestBase(unittest.TestCase):
 
     def save_recipe(self, name, data=None, mock_rez=True, dirname=None):
         data = data or dict()
-        path = Path(self.base) / dirname or ".recipes"
+        dirname = dirname or ".recipes"
+        path = Path(self.base) / dirname
 
         if mock_rez:
             data.update({"rez": {
