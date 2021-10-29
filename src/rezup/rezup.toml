@@ -1,6 +1,6 @@
 
 description = "default container revision recipe"
-schema = "rezup-recipe:1.0"
+schema = "rezup-recipe:2.0"
 
 [root]
 local = false
