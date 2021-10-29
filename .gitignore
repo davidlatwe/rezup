@@ -130,3 +130,6 @@ dmypy.json
 
 # PyCharm
 .idea/
+
+# versioning by setuptools_scm
+src/rezup/_version.py

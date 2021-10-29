@@ -2,18 +2,8 @@
 import os
 import sys
 import fire
+from . import get_rezup_version
 from .container import Container, iter_containers
-
-
-def version_str():
-    import rezup._version
-    return "{name} {ver} from {lib} (python {x}.{y})".format(
-        name="rezup",
-        ver=rezup._version.__version__,
-        lib=rezup.__path__[0],
-        x=sys.version_info.major,
-        y=sys.version_info.minor,
-    )
 
 
 def disable_rezup_if_entered():
@@ -62,7 +52,7 @@ class RezupCLI:
     """
     def __init__(self, version=False, latest=False):
         if version:
-            prompt_exit(version_str())
+            prompt_exit(get_rezup_version())
         if latest:
             prompt_exit(fetch_latest_version_from_pypi())
 
