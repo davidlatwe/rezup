@@ -3,3 +3,6 @@ global-include *LICENSE* *.txt *.md *.rst
 include pyproject.toml
 include src/rezup/rezup.toml
 include src/rezup/launch/up.*
+
+global-exclude __pycache__
+global-exclude *.py[cod]

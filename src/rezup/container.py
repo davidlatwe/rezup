@@ -36,7 +36,7 @@ try:
 except ImportError:
     from importlib_metadata import Distribution
 
-from ._version import __version__
+from . import __version__
 from .launch import shell
 from .recipe import ContainerRecipe, RevisionRecipe, DEFAULT_CONTAINER_NAME
 from .exceptions import ContainerError
