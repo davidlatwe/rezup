@@ -7,6 +7,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
+# versioning with git tag.
+# - package may get installed as version 0.0.0 if python-2 used
 write_to = "src/rezup/_version.py"
 write_to_template = """\
 # coding: utf-8

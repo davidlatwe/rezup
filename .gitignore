@@ -131,5 +131,5 @@ dmypy.json
 # PyCharm
 .idea/
 
-# versioning by setuptools_scm
+# versioning by setuptools_scm, see pyproject.toml
 src/rezup/_version.py
