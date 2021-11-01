@@ -89,7 +89,7 @@ class RezupCLI:
 
                 self._job = " ".join(args)
 
-    def use(self, name=_default_cname, no_wait=False, do=None):
+    def use(self, name=_default_cname, just=False, do=None):
         """Step into a container. Run `rezup use -h` for help
 
         This will open a sub-shell which has Rez venv ready to use. Simply
@@ -106,14 +106,17 @@ class RezupCLI:
             - use foo and do job (non-interactive session)
             $ rezup use foo --do {script.bat or "quoted command"}
 
+            - not waiting the job process to complete
+            $ rezup use foo --just --do {script.bat or "quoted command"}
+
         Args:
             name (str): container name
-            no_wait (bool): not waiting --do script/command to complete
+            just (bool): not waiting --do script/command to complete, just do
             do (str): run a shell script or command and exit
 
         """
         self._compose_job(do)
-        self._wait = not no_wait
+        self._wait = not just
 
         container = Container(name)
         revision = container.get_latest_revision()
