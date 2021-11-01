@@ -6,6 +6,9 @@ from . import get_rezup_version
 from .container import Container, iter_containers
 
 
+_default_cname = Container.DEFAULT_NAME
+
+
 def disable_rezup_if_entered():
     _con = os.getenv("REZUP_CONTAINER")
     if _con:
@@ -22,7 +25,7 @@ def prompt_exit(message):
 def run():
     """CLI entry point"""
     if len(sys.argv) == 1:  # for fast access
-        sys.argv += ["use", Container.DEFAULT_NAME]
+        sys.argv += ["use", _default_cname]
 
     patch_fire_help(my_order=[
         "use",
@@ -59,6 +62,7 @@ class RezupCLI:
         disable_rezup_if_entered()
 
         self._job = None
+        self._wait = None
 
     def _compose_job(self, do):
         """Compose the full job command from sys.argv
@@ -85,7 +89,7 @@ class RezupCLI:
 
                 self._job = " ".join(args)
 
-    def use(self, name=Container.DEFAULT_NAME, do=None):
+    def use(self, name=_default_cname, no_wait=False, do=None):
         """Step into a container. Run `rezup use -h` for help
 
         This will open a sub-shell which has Rez venv ready to use. Simply
@@ -104,17 +108,19 @@ class RezupCLI:
 
         Args:
             name (str): container name
+            no_wait (bool): not waiting --do script/command to complete
             do (str): run a shell script or command and exit
 
         """
         self._compose_job(do)
+        self._wait = not no_wait
 
         container = Container(name)
         revision = container.get_latest_revision()
 
         if revision:
             sys.exit(
-                revision.use(run_script=self._job)
+                revision.use(command=self._job, wait=self._wait)
             )
         else:
             if container.is_exists():
@@ -127,7 +133,7 @@ class RezupCLI:
                 print("Creating container automatically for first run..")
                 self.add(name)
 
-    def add(self, name=Container.DEFAULT_NAME, remote=False, skip_use=False):
+    def add(self, name=_default_cname, remote=False, skip_use=False):
         """Add one container revision. Run `rezup add -h` for help
 
         This will create a new container revision (a new Rez venv setup) with
@@ -164,7 +170,7 @@ class RezupCLI:
 
         if not skip_use:
             sys.exit(
-                revision.use(run_script=self._job)
+                revision.use(command=self._job, wait=self._wait)
             )
 
     def drop(self, name):

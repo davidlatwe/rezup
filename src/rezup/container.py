@@ -439,7 +439,17 @@ class Revision:
 
         return revision
 
-    def use(self, run_script=None):
+    def spawn_shell(self, command=None):
+        """Spawn a sub-shell
+
+        Args:
+            command (str, optional): A shell script file or a command.
+                If given, the sub-shell will not be interactive.
+
+        Returns:
+            subprocess.Popen
+
+        """
         if not self.is_valid():
             raise Exception("Cannot use invalid revision.")
         if not self.is_ready():
@@ -448,7 +458,7 @@ class Revision:
         if self.is_remote():
             # use local
             revision = self.pull()
-            return revision.use(run_script=run_script)
+            return revision.spawn_shell(command=command)
 
         else:
             # Launch subprocess
@@ -456,17 +466,17 @@ class Revision:
             environment = self._compose_env()
             shell_name, shell_exec = self._get_shell()
 
-            if run_script and os.path.isfile(run_script):
+            if command and os.path.isfile(command):
                 # run shell script and exit
                 block = False
                 replacement["__REZUP_DO__"] = "script"
-                replacement["__REZUP_DO_SCRIPT__"] = os.path.abspath(run_script)
+                replacement["__REZUP_DO_SCRIPT__"] = os.path.abspath(command)
 
-            elif run_script:
+            elif command:
                 # run shell command and exit
                 block = False
                 replacement["__REZUP_DO__"] = "command"
-                replacement["__REZUP_DO_COMMAND__"] = run_script
+                replacement["__REZUP_DO_COMMAND__"] = command
 
             else:
                 # interactive shell
@@ -489,9 +499,30 @@ class Revision:
                                        block=block)
 
             popen = subprocess.Popen(cmd, env=environment)
-            stdout, stderr = popen.communicate()
+            return popen
 
+    def use(self, command=None, wait=True):
+        """Run a sub-shell
+
+        Args:
+            command (str, optional): A shell script or a command. If given,
+                the sub-shell will not be interactive.
+            wait (bool, optional): Whether to wait `run_script` finish or not,
+                default True.
+
+        Returns:
+            int: subprocess return code, will always return 0 if `run_script`
+                is given and `wait` is False.
+
+        """
+        block = not command
+        popen = self.spawn_shell(command=command)
+
+        if block or wait:
+            stdout, stderr = popen.communicate()
             return popen.returncode
+        else:
+            return 0
 
     def _compose_env(self):
         env = os.environ.copy()
