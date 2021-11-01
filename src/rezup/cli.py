@@ -2,11 +2,13 @@
 import os
 import sys
 import fire
+import logging
 from . import get_rezup_version
 from .container import Container, iter_containers
 
 
 _default_cname = Container.DEFAULT_NAME
+_log = logging.getLogger("rezup")
 
 
 def disable_rezup_if_entered():
@@ -51,9 +53,12 @@ class RezupCLI:
     Args:
         version: Show current version and exit
         latest: Show latest version of rezup(api) in PyPI and exit.
+        debug: Enable debug level logging
 
     """
-    def __init__(self, version=False, latest=False):
+    def __init__(self, version=False, latest=False, debug=False):
+        _log.setLevel(logging.DEBUG if debug else logging.INFO)
+
         if version:
             prompt_exit(get_rezup_version())
         if latest:
@@ -127,13 +132,15 @@ class RezupCLI:
             )
         else:
             if container.is_exists():
-                print("Container '%s' exists but has no valid revision: %s"
-                      % (container.name(), container.path()))
+                _log.error(
+                    "Container '%s' exists but has no valid revision: %s"
+                    % (container.name(), container.path())
+                )
                 sys.exit(1)
 
             else:
                 # for quick first run
-                print("Creating container automatically for first run..")
+                _log.info("Creating container automatically for first run..")
                 self.add(name)
 
     def add(self, name=_default_cname, remote=False, skip_use=False):
@@ -160,13 +167,13 @@ class RezupCLI:
 
         """
         if remote:
-            print("Creating remote container..")
+            _log.info("Creating remote container..")
             container = Container.create(name)
             if not container.is_remote():
-                print("Remote root is not set.")
+                _log.error("Remote root is not set.")
                 sys.exit(1)
         else:
-            print("Creating local container..")
+            _log.info("Creating local container..")
             container = Container.create(name, force_local=True)
 
         revision = container.new_revision()

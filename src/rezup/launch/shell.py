@@ -2,6 +2,7 @@
 import os
 import sys
 import stat
+import logging
 import shellingham
 
 if sys.version_info.major == 2 and os.name == "nt":
@@ -20,6 +21,9 @@ LAUNCH_SCRIPTS = {
     "up.ps1": ["pwsh", "powershell"],
     "up.sh":  ["sh", "bash", "zsh"],
 }
+
+
+_log = logging.getLogger("rezup")
 
 
 def get_current_shell():
@@ -68,6 +72,9 @@ def get_launch_cmd(shell_name, shell_exec, launch_script, block=True):
 
     command.append(str(launch_script))
 
+    _log.debug("Launch command:")
+    _log.debug(" ".join(command))
+
     return command
 
 
@@ -97,6 +104,8 @@ def generate_launch_script(shell_name, dst_dir, replacement=None):
 
         st = os.stat(launch_script)
         os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
+
+        _log.debug("Launch script:\n\n" + text + "\n")
 
         return launch_script
 
