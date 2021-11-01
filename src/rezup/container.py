@@ -429,6 +429,7 @@ class Revision:
 
         env.update({
             "REZUP_CONTAINER": self._container.name(),
+            "REZUP_USING_REMOTE": "yes" if self._is_pulled else "",
         })
 
         return env
