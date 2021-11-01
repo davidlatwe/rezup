@@ -507,11 +507,11 @@ class Revision:
         Args:
             command (str, optional): A shell script or a command. If given,
                 the sub-shell will not be interactive.
-            wait (bool, optional): Whether to wait `run_script` finish or not,
+            wait (bool, optional): Whether to wait `command` finish or not,
                 default True.
 
         Returns:
-            int: subprocess return code, will always return 0 if `run_script`
+            int: subprocess return code, will always return 0 if `command`
                 is given and `wait` is False.
 
         """
