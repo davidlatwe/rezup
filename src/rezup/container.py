@@ -262,6 +262,7 @@ class Revision:
         self._metadata = None
         self._recipe = RevisionRecipe(self)
         self._metadata_path = self._path / "revision.json"
+        self._is_pulled = False
 
     def __repr__(self):
         return "%s(valid=%d, ready=%d, remote=%d, path=%r)" % (
@@ -428,6 +429,7 @@ class Revision:
 
         env.update({
             "REZUP_CONTAINER": self._container.name(),
+            "REZUP_USING_REMOTE": "yes" if self._is_pulled else "",
         })
 
         return env
@@ -479,6 +481,9 @@ class Revision:
             revision = Revision(container=local, dirname=self._dirname)
             revision._write(pulling=self)
 
+        if revision is not None:
+            revision._is_pulled = True
+
         return revision
 
     def spawn_shell(self, command=None):
@@ -523,8 +528,10 @@ class Revision:
             else:
                 # interactive shell
                 block = True
+                _con_name = self._container.name()
+                _con_from = "remote" if self._is_pulled else "local"
                 replacement["__REZUP_SHELL__"] = shell_exec
-                prompt = "rezup (%s) " % self._container.name()
+                prompt = "rezup (%s/%s) " % (_con_name, _con_from)
                 prompt = shell.format_prompt_code(prompt, shell_name)
                 environment.update({
                     "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
