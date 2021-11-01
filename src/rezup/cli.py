@@ -127,7 +127,7 @@ class RezupCLI:
         self._compose_job(do)
         self._wait = not just
 
-        container = Container.create(name, force_local=local)
+        container = Container(name, force_local=local)
         revision = container.get_latest_revision()
 
         if revision:
