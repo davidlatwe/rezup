@@ -4,6 +4,7 @@ try:
 except ImportError:
     __version__ = "0.0.0"  # not installed
 
+from . import _logging  # init logging
 from .container import Container, Revision, iter_containers
 from .recipe import ContainerRecipe
 from .exceptions import ContainerError

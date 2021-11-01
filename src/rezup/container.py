@@ -7,6 +7,7 @@ import shutil
 import socket
 import getpass
 import pkgutil
+import logging
 import platform
 import tempfile
 import functools
@@ -43,6 +44,7 @@ from .exceptions import ContainerError
 
 
 _PY2 = sys.version_info.major == 2
+_log = logging.getLogger("rezup")
 
 
 # TODO:
@@ -140,10 +142,20 @@ class Container:
         self._root = root
         self._path = root / name
 
+    def __repr__(self):
+        return "%s(remote=%d, name=%r, path=%r)" % (
+            self.__class__.__name__,
+            int(self.is_remote()),
+            self.name(),
+            self._path.resolve(),
+        )
+
     @classmethod
     def create(cls, name, force_local=False):
         recipe = ContainerRecipe(name)
+        _log.debug("Sourcing recipe from: %s" % recipe)
         if not recipe.is_file():
+            _log.debug("Recipe file not exists, creating default..")
             recipe.create()
         return Container(name, recipe, force_local)
 
@@ -198,22 +210,28 @@ class Container:
             rmtree(root)
 
     def iter_revision(self, validate=True, latest_first=True):
+        _log.debug("Iterating revisions in container %s.." % self)
+
         if not self.is_exists():
+            _log.debug("Container %r not exists." % self.name())
             return
 
         revisions_root = Revision.compose_path(container=self)
         if not revisions_root.is_dir():
+            _log.debug("Revision root is not a directory: %s" % revisions_root)
             return
 
         revisions_root = str(revisions_root)
         for entry in sorted(os.listdir(revisions_root), reverse=latest_first):
             revision = Revision(container=self, dirname=entry)
+            _log.debug("... %s" % revision)
             if not validate or revision.is_valid():
                 yield revision
 
     def get_latest_revision(self, only_ready=True):
         for revision in self.iter_revision():
             if not only_ready or revision.is_ready():
+                _log.debug("Found latest revision.")
                 return revision
 
     def get_revision_at_time(self, timestamp, strict=False, only_ready=True):
@@ -221,7 +239,11 @@ class Container:
             if not only_ready or revision.is_ready():
                 if (revision.timestamp() == timestamp
                         or (not strict and revision.timestamp() <= timestamp)):
+
+                    _log.debug("Found time matched revision.")
                     return revision
+
+        _log.debug("No time matched revision found.")
 
     def new_revision(self):
         return Revision.create(self)
@@ -241,6 +263,15 @@ class Revision:
         self._recipe = RevisionRecipe(self)
         self._metadata_path = self._path / "revision.json"
 
+    def __repr__(self):
+        return "%s(valid=%d, ready=%d, remote=%d, path=%r)" % (
+            self.__class__.__name__,
+            int(self.is_valid()),
+            int(self.is_ready()),
+            int(self.is_remote()),
+            self._path.resolve(),
+        )
+
     @classmethod
     def compose_path(cls, container, dirname=None):
         path = container.revisions()
@@ -255,14 +286,23 @@ class Revision:
         return revision
 
     def _write(self, pulling=None):
+        """Sourcing recipe and create a revision
+
+        Args:
+            pulling (Revision, optional): If given, pulling recipe from that
+                revision, usually a remote one.
+        """
+        _log.debug("Creating revision..")
+
         recipe = self._recipe
         makedirs(self._path)
 
         # write revision recipe
         if pulling is None:
-            print("Recipe sourced from: %s" % self._container.recipe().path())
+            _log.info("Recipe sourced from: %s" % self._container.recipe())
             recipe.create()
         else:
+            _log.debug("Pulling recipe from: %s" % pulling)
             recipe.pull(pulling)
 
         if not self.is_valid():
@@ -291,6 +331,8 @@ class Revision:
     def _install(self, rez_, extensions=None, shared_lib=None):
         """Construct Rez virtual environment by recipe
         """
+        _log.debug("Installing..")
+
         extensions = extensions or []
         installer = Installer(self)
         installer.install_rez(rez_)
@@ -433,7 +475,7 @@ class Revision:
         local = Container(_con_name, recipe=_con_recipe, force_local=True)
         revision = local.get_revision_at_time(self._timestamp, strict=True)
         if revision is None and check_out:
-            print("Pulling from remote container %s .." % _con_name)
+            _log.info("Pulling from remote container: %s" % self._container)
             revision = Revision(container=local, dirname=self._dirname)
             revision._write(pulling=self)
 
@@ -618,9 +660,11 @@ class Revision:
         metadata = self.metadata()
         if metadata and not metadata.get("rezup_version"):
             # rezup-1.x
+            _log.debug("Is a 'rezup-1.x' styled revision.")
             bin_dirs.append(self._path / "bin")
         else:
             # rezup-2.x
+            _log.debug("Is a 'rezup-2.x' styled revision.")
             for venv_name in metadata.get("venvs", []):
                 bin_dirs.append(self.production_bin_dir(venv_name))
 
@@ -635,6 +679,16 @@ class Tool:
         self.edit = data.get("edit", False)
         self.isolation = data.get("isolation", False)
         self.python = data.get("python", None)
+
+    def __repr__(self):
+        return "%s(name=%s, edit=%d, url=%s, isolation=%d, python=%s)" % (
+            self.__class__.__name__,
+            self.name,
+            int(self.edit),
+            self.url,
+            int(self.isolation),
+            self.python,
+        )
 
 
 class Installer:
@@ -675,6 +729,10 @@ class Installer:
         use_python = tool.python or sys.executable
         dst = self._revision.path() / "venv" / tool.name
 
+        _log.info("Creating virtual env..")
+        _log.info("  Python: %s" % use_python)
+        _log.info("       -> %s" % dst)
+
         # create venv
         args = [
             "--python", str(use_python),
@@ -698,7 +756,7 @@ class Installer:
             "--disable-pip-version-check",
         ]
 
-        print("Installing %s.." % tool.name)
+        _log.info("Installing %s.." % tool)
         subprocess.check_output(cmd)
 
         if patch_scripts:
@@ -708,6 +766,8 @@ class Installer:
                 # TODO: copy completion scripts
 
     def mark_as_rez_production_install(self, tool, venv_session):
+        _log.info("Mark as Rez production install..")
+
         rez_bin = self._revision.production_bin_dir("rez")
         validator = rez_bin / ".rez_production_install"
         rez_version = self._revision.get_rez_version(venv_session)
@@ -731,6 +791,8 @@ class Installer:
         which will ignore all PYTHON* env vars, e.g. PYTHONPATH and PYTHONHOME.
 
         """
+        _log.info("Generating production scripts..")
+
         site_packages = venv_session.creator.purelib
         bin_path = venv_session.creator.bin_dir
 
@@ -786,6 +848,8 @@ class Installer:
         return scripts
 
     def create_shared_lib(self, name, requires):
+        _log.info("Installing shared libs..")
+
         lib_path = str(self._container.libs() / name)
 
         venv_session = self._default_venv
