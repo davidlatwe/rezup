@@ -222,28 +222,81 @@ class RezupCLI:
             name (str): show status of specific container if name given
 
         """
-        print("   Name   | Is Remote | Rev Count | Root     ")
-        print("---------------------------------------------")
-        status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
+        if name is None:
+            # show overall status
 
-        for con in iter_containers():
-            status = {
-                "name": con.name(),
-                "remote": "O" if con.is_remote() else "-",
-                "rev_count": len(list(con.iter_revision())),
-                "root": con.root(),
-            }
-            print(status_line.format(**status))
+            print("   Name   | Is Remote | Rev Count | Root     ")
+            print("---------------------------------------------")
+            status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
 
-        if name:
+            for con in iter_containers():
+                status = {
+                    "name": con.name(),
+                    "remote": "O" if con.is_remote() else "-",
+                    "rev_count": len(list(con.iter_revision())),
+                    "root": con.root(),
+                }
+                print(status_line.format(**status))
+
+        else:
+            # show specific container info
+
+            con = Container(name)
+            if con.is_remote():
+                local_con = Container(name, force_local=True)
+                remote_con = con
+            else:
+                local_con = con
+                remote_con = None
+
+            print("Container: %s" % name)
+
+            if remote_con is None and not local_con.is_exists():
+                print("NOT EXISTS.")
+                return
+
+            print("    Local: %s" % local_con.path())
+            print("   Remote: %s" % (remote_con.path() if remote_con else "-"))
             print("")
-            local_con = Container(name, force_local=True)
-            if local_con is not None:
-                libs = local_con.libs()
-                if libs.is_dir():
-                    print("  Shared libs:")
-                    for lib_name in local_con.libs().iterdir():
-                        print("    %s" % lib_name)
+            print(" Local | Remote |   Rez   |       Date      | Timestamp    ")
+            print("-----------------------------------------------------------")
+            info_line = "{l: ^7}|{r: ^8}|{rez: ^9}| {date} | {time}"
+
+            # sort and paring revisions
+            revs = list(local_con.iter_revision())
+            revs += list(remote_con.iter_revision()) if remote_con else []
+            sorted_revs = sorted(
+                revs, key=lambda r: (r.timestamp(), -r.is_remote())
+            )
+            paired_revs = {"L": [], "R": []}
+            for rev in sorted_revs:
+                if rev.is_remote():
+                    paired_revs["R"].append(rev)
+                    paired_revs["L"].append(None)
+                else:
+                    if paired_revs["R"] and paired_revs["R"][-1] == rev:
+                        paired_revs["L"][-1] = rev
+                    else:
+                        paired_revs["R"].append(None)
+                        paired_revs["L"].append(rev)
+
+            # print out
+            for i, local in enumerate(paired_revs["L"]):
+                remote = paired_revs["R"][i]
+
+                if local is None and remote is None:
+                    continue  # not likely to happen
+
+                data = local or remote
+                info = {
+                    "l": "O" if local else "",
+                    "r": "O" if remote else "",
+                    "rez": local.get_rez_version() if local else "",
+                    "date": data.timestamp().strftime("%d.%b.%y %H:%M"),
+                    "time": data.dirname(),
+                }
+                print(info_line.format(**info))
+            print("")
 
 
 def fetch_latest_version_from_pypi():

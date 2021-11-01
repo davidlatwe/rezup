@@ -273,6 +273,12 @@ class Revision:
             self._path.resolve(),
         )
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        return self._container.name() == other._container.name() \
+            and self.timestamp() == other.timestamp()
+
     @classmethod
     def compose_path(cls, container, dirname=None):
         path = container.revisions()
