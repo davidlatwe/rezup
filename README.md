@@ -15,11 +15,11 @@ A cross-platform Rez production virtual environment management tool, which allow
 ## Install
 
 This installs the `rezup` full package.
-```
+```shell
 $ pip install rezup
 ```
 To **upgrade**, you only need to upgrade the API part. So to avoid re-creating console-script.
-```
+```shell
 $ pip install -U rezup-api
 ```
 
