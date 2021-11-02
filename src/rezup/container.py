@@ -305,7 +305,7 @@ class Revision:
             pulling (Revision, optional): If given, pulling recipe from that
                 revision, usually a remote one.
         """
-        _log.debug("Creating revision..")
+        _log.info("Creating revision..")
 
         recipe = self._recipe
         makedirs(self._path)
@@ -325,6 +325,10 @@ class Revision:
         rez_ = Tool(recipe["rez"])
         extensions = [Tool(d) for d in recipe.get("extension", []) if d]
         shared_lib = recipe.get("shared")
+        _log.info("Recipe loaded.")
+        _log.debug("       Rez: %s" % rez_.url)
+        _log.debug(" Extension: " + ", ".join([e.name for e in extensions]))
+        _log.debug("Shared-lib: %s" % shared_lib)
 
         # install, if at local
         if not self._container.is_remote():
