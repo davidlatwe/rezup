@@ -34,17 +34,15 @@ def run():
     # consume all args after '--' so no need to rely on problem prone 'nargs'
     #   as container command
     if sys.argv[1] == "use" and "--" in sys.argv:
-        ind = sys.argv.index("--")
-        cmd_argv = sys.argv[ind + 1:]
-        sys.argv[:] = sys.argv[:ind]
-        obj["job"] = _compose_cmd(cmd_argv)
+        obj["job"] = _parse_use_cmd()
 
+    # enter
     _log.setLevel(logging.INFO)
     cli(obj=obj)
 
 
-def _compose_cmd(argv):
-    """Compose the full job command from sys.argv
+def _parse_use_cmd():
+    """Parse job command from sys.argv for command 'rezup use'
 
     For input like the example below, the full command cannot be parsed
     by fire due to the `-` in there. Hence this helper. Also, quoting
@@ -53,15 +51,18 @@ def _compose_cmd(argv):
         $ rezup use -do rez-env -- python -c "print('hello')"
 
     """
-    # TODO: check first arg is a file or not
+    __ = sys.argv.index("--")
+
     args = []
-    for a in argv:
+    for a in sys.argv[__ + 1:]:
         ra = repr(a)
         args.append(
             ra if "'" in a and not ra.startswith("'") else a
         )
 
-    return " ".join(args)
+    sys.argv[:] = sys.argv[:__]
+
+    return args
 
 
 def _opt_callback_debug_logging(ctx, param, value):

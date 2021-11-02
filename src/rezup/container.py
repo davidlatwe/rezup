@@ -496,7 +496,7 @@ class Revision:
         """Spawn a sub-shell
 
         Args:
-            command (str, optional): A shell script file or a command.
+            command (list, optional): Shell script file with args or commands.
                 If given, the sub-shell will not be interactive.
 
         Returns:
@@ -519,17 +519,17 @@ class Revision:
             environment = self._compose_env()
             shell_name, shell_exec = self._get_shell()
 
-            if command and os.path.isfile(command):
+            if command and os.path.isfile(command[0]):
                 # run shell script and exit
                 block = False
                 replacement["__REZUP_DO__"] = "script"
-                replacement["__REZUP_DO_SCRIPT__"] = os.path.abspath(command)
+                replacement["__REZUP_DO_SCRIPT__"] = " ".join(command)
 
             elif command:
                 # run shell command and exit
                 block = False
                 replacement["__REZUP_DO__"] = "command"
-                replacement["__REZUP_DO_COMMAND__"] = command
+                replacement["__REZUP_DO_COMMAND__"] = " ".join(command)
 
             else:
                 # interactive shell
@@ -560,8 +560,8 @@ class Revision:
         """Run a sub-shell
 
         Args:
-            command (str, optional): A shell script or a command. If given,
-                the sub-shell will not be interactive.
+            command (list, optional): Shell script with args or commands. If
+                given, the sub-shell will not be interactive.
             wait (bool, optional): Whether to wait `command` finish or not,
                 default True.
 
