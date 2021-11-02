@@ -1,9 +1,9 @@
 
 import os
 import sys
-import fire
+import click
 import logging
-from . import get_rezup_version
+from . import get_rezup_version, __version__
 from .container import Container, iter_containers
 
 
@@ -11,38 +11,103 @@ _default_cname = Container.DEFAULT_NAME
 _log = logging.getLogger("rezup")
 
 
-def disable_rezup_if_entered():
+def _disable_rezup_if_entered(ctx):
     _con = os.getenv("REZUP_CONTAINER")
     if _con:
         print("Not allowed inside container, please exit first. "
               "(current: %s)" % _con)
-        sys.exit(1)
-
-
-def prompt_exit(message):
-    print(message)
-    sys.exit(0)
+        ctx.exit(1)
 
 
 def run():
-    """CLI entry point"""
-    if len(sys.argv) == 1:  # for fast access
+    """CLI entry point
+    """
+    obj = {
+        "job": None,
+        "wait": None,
+    }
+
+    # for fast access
+    if len(sys.argv) == 1:
         sys.argv += ["use", _default_cname]
 
-    patch_fire_help(my_order=[
-        "use",
-        "add",
-        "drop",
-        "status",
-    ])
-    fire.Fire(RezupCLI, name="rezup")
+    # consume all args after '--' so no need to rely on problem prone 'nargs'
+    #   as container command
+    if sys.argv[1] == "use" and "--" in sys.argv:
+        obj["job"] = _parse_use_cmd()
+
+    # enter
+    _log.setLevel(logging.INFO)
+    cli(obj=obj)
 
 
-class RezupCLI:
+def _parse_use_cmd():
+    """Parse job command from sys.argv for command 'rezup use'
+
+    For input like the example below, the full command cannot be parsed
+    by fire due to the `-` in there. Hence this helper. Also, quoting
+    is being handled as well. Experimentally..
+
+        $ rezup use -do rez-env -- python -c "print('hello')"
+
+    """
+    __ = sys.argv.index("--")
+
+    args = []
+    for a in sys.argv[__ + 1:]:
+        ra = repr(a)
+        args.append(
+            ra if "'" in a and not ra.startswith("'") else a
+        )
+
+    sys.argv[:] = sys.argv[:__]
+
+    return args
+
+
+def _opt_callback_debug_logging(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    _log.setLevel(logging.DEBUG)
+
+
+def _opt_callback_show_latest(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(fetch_latest_version_from_pypi())
+    ctx.exit()
+
+
+# for reusable across commands
+_cli_debug_option = click.option(
+    "-D", "--debug",
+    help="Show debug level logging messages.",
+    is_eager=True,
+    is_flag=True,
+    expose_value=False,
+    callback=_opt_callback_debug_logging,
+)
+
+
+@click.group()
+@click.version_option(
+    __version__,
+    "-V", "--version",
+    message=get_rezup_version(),
+)
+@click.option(
+    "-L", "--latest",
+    help="Show latest version of rezup(api) in PyPI and exit.",
+    is_eager=True,
+    is_flag=True,
+    expose_value=False,
+    callback=_opt_callback_show_latest,
+)
+@_cli_debug_option
+@click.help_option("-h", "--help")
+@click.pass_context
+def cli(ctx):
     """Rez launching environment manager
-
-                   * Run `rezup -` for COMMANDS help *
-               * This CLI is powered by google/python-fire *
 
     A Rez production virtual environment management tool, which allows safe
     environment update without any interruption. Plus a convenient virtual
@@ -50,253 +115,260 @@ class RezupCLI:
 
     https://github.com/davidlatwe/rezup
 
+    """
+    _disable_rezup_if_entered(ctx)
+
+
+@cli.command(options_metavar="[NAME] [OPTIONS] [-- commands..]")
+@click.argument("name", nargs=1, default=_default_cname, metavar="")
+@click.option("-l", "--local", is_flag=True)
+@click.option("-n", "--no-wait", is_flag=True)
+@_cli_debug_option
+@click.help_option("-h", "--help")
+@click.pass_context
+def use(ctx, name, local, no_wait):
+    """Step into a container.
+
+    This will open a sub-shell which has Rez venv ready to use. Simply
+    type 'exit' when finished.
+
+    Examples:
+
+        \b
+        - for quick start, auto use default container '.main'
+        $ rezup
+
+        \b
+        - use container 'foo'
+        $ rezup use foo
+
+        \b
+        - ignore remote and only use local container
+        $ rezup use foo --local
+
+        \b
+        - use foo and do job (non-interactive session)
+        $ rezup use foo --do {script.bat or "quoted command"}
+
+        \b
+        - not waiting the job process to complete
+        $ rezup use foo --just --do {script.bat or "quoted command"}
+
+    \f
     Args:
-        version: Show current version and exit
-        latest: Show latest version of rezup(api) in PyPI and exit.
-        debug: Enable debug level logging
+        ctx (click.Context): click's internal context object
+        name (str): container name
+        local (bool): ignore remote and use local container
+        no_wait (bool): not waiting '-- script/command' to complete
 
     """
-    def __init__(self, version=False, latest=False, debug=False):
-        _log.setLevel(logging.DEBUG if debug else logging.INFO)
+    ctx.obj["wait"] = not no_wait
 
-        if version:
-            prompt_exit(get_rezup_version())
-        if latest:
-            prompt_exit(fetch_latest_version_from_pypi())
+    container = Container(name, force_local=local)
+    revision = container.get_latest_revision()
 
-        disable_rezup_if_entered()
-
-        self._job = None
-        self._wait = None
-
-    def _compose_job(self, do):
-        """Compose the full job command from sys.argv
-
-        For input like the example below, the full command cannot be parsed
-        by fire due to the `-` in there. Hence this helper. Also, quoting
-        is being handled as well. Experimentally..
-
-            $ rezup use -do rez-env -- python -c "print('hello')"
-
-        """
-        self._job = do
-
-        for flag in ["-d", "--do"]:
-            if flag in sys.argv:
-                index = sys.argv.index(flag) + 1
-
-                args = []
-                for a in sys.argv[index:]:
-                    ra = repr(a)
-                    args.append(
-                        ra if "'" in a and not ra.startswith("'") else a
-                    )
-
-                self._job = " ".join(args)
-
-    def use(self, name=_default_cname, local=False, just=False, do=None):
-        """Step into a container. Run `rezup use -h` for help
-
-        This will open a sub-shell which has Rez venv ready to use. Simply
-        type 'exit' when finished.
-
-        Usages:
-
-            - for quick start, auto use default container '.main'
-            $ rezup
-
-            - use container 'foo'
-            $ rezup use foo
-
-            - ignore remote and only use local container
-            $ rezup use foo --local
-
-            - use foo and do job (non-interactive session)
-            $ rezup use foo --do {script.bat or "quoted command"}
-
-            - not waiting the job process to complete
-            $ rezup use foo --just --do {script.bat or "quoted command"}
-
-        Args:
-            name (str): container name
-            local (bool): ignore remote and use local container
-            just (bool): not waiting --do script/command to complete, just do
-            do (str): run a shell script or command and exit
-
-        """
-        self._compose_job(do)
-        self._wait = not just
-
-        container = Container(name, force_local=local)
-        revision = container.get_latest_revision()
-
-        if revision:
-            sys.exit(
-                revision.use(command=self._job, wait=self._wait)
+    if revision:
+        ctx.exit(
+            revision.use(command=ctx.obj["job"], wait=ctx.obj["wait"])
+        )
+    else:
+        if container.is_exists():
+            _log.error(
+                "Container '%s' exists but has no valid revision: %s"
+                % (container.name(), container.path())
             )
-        else:
-            if container.is_exists():
-                _log.error(
-                    "Container '%s' exists but has no valid revision: %s"
-                    % (container.name(), container.path())
-                )
-                sys.exit(1)
+            ctx.exit(1)
 
+        elif container.name() != Container.DEFAULT_NAME:
+            _log.error(
+                "Container '%s' not exist, use 'rezup add' to create."
+                % container.name()
+            )
+            ctx.exit(1)
+
+        else:
+            # for quick first run
+            _log.info("Creating container automatically for first run..")
+            ctx.invoke(add, name=name)
+
+
+@cli.command(options_metavar="[NAME] [OPTIONS]")
+@click.argument("name", nargs=1, default=_default_cname, metavar="")
+@click.option("-r", "--remote", is_flag=True)
+@click.option("-s", "--skip-use", is_flag=True)
+@_cli_debug_option
+@click.help_option("-h", "--help")
+@click.pass_context
+def add(ctx, name=_default_cname, remote=False, skip_use=False):
+    """Add one container revision.
+
+    This will create a new container revision (a new Rez venv setup) with
+    corresponding recipe file.
+
+    Examples:
+
+        \b
+        - create & use new rev from container '.main' (with ~/rezup.toml)
+        $ rezup add
+
+        \b
+        - create & use new rev from container 'foo' (with ~/rezup.foo.toml)
+        $ rezup add foo
+
+        \b
+        - create new rev from remote container
+        $ rezup add --remote --skip-use
+
+    \f
+    Args:
+        ctx (click.Context): click's internal context object
+        name (str): container name
+        remote (bool): add a remote revision
+        skip_use (bool): add revision and exit
+
+    """
+    if remote:
+        _log.info("Creating remote container..")
+        container = Container.create(name)
+        if not container.is_remote():
+            _log.error("Remote root is not set.")
+            ctx.exit(1)
+    else:
+        _log.info("Creating local container..")
+        container = Container.create(name, force_local=True)
+
+    revision = container.new_revision()
+
+    if not skip_use:
+        ctx.exit(
+            revision.use(command=ctx.obj["job"], wait=ctx.obj["wait"])
+        )
+
+
+@cli.command()
+@click.argument("name", nargs=1)
+@_cli_debug_option
+@click.help_option("-h", "--help")
+def drop(name):
+    """Remove a container.
+
+    Remove entire container from disk. This command isn't ready yet, use
+    with caution.
+
+    Examples:
+
+        \b
+        - remove container foo
+        $ rezup drop foo
+
+    \f
+    Args:
+        name (str): container name
+
+    """
+    container = Container(name)
+    container.purge()
+
+
+@cli.command()
+@click.argument("name", nargs=1, required=False)
+@_cli_debug_option
+@click.help_option("-h", "--help")
+def status(name=None):
+    """Show status of containers.
+
+    Displaying some useful info about current visible containers..
+
+    Examples:
+
+        \b
+        - list containers and info
+        $ rezup status
+
+        \b
+        - show detailed info of specific container
+        $ rezup status foo
+
+    \f
+    Args:
+        name (str): show status of specific container if name given
+
+    """
+    if name is None:
+        # show overall status
+
+        print("   Name   | Is Remote | Rev Count | Root     ")
+        print("---------------------------------------------")
+        stat_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
+
+        for con in iter_containers():
+            stat = {
+                "name": con.name(),
+                "remote": "O" if con.is_remote() else "-",
+                "rev_count": len(list(con.iter_revision())),
+                "root": con.root(),
+            }
+            print(stat_line.format(**stat))
+
+    else:
+        # show specific container info
+
+        con = Container(name)
+        if con.is_remote():
+            local_con = Container(name, force_local=True)
+            remote_con = con
+        else:
+            local_con = con
+            remote_con = None
+
+        print("Container: %s" % name)
+
+        if remote_con is None and not local_con.is_exists():
+            print("NOT EXISTS.")
+            return
+
+        print("    Local: %s" % local_con.path())
+        print("   Remote: %s" % (remote_con.path() if remote_con else "-"))
+        print("")
+        print(" Local | Remote |   Rez   |       Date      | Timestamp    ")
+        print("-----------------------------------------------------------")
+        info_line = "{l: ^7}|{r: ^8}|{rez: ^9}| {date} | {time}"
+
+        # sort and paring revisions
+        revs = list(local_con.iter_revision())
+        revs += list(remote_con.iter_revision()) if remote_con else []
+        sorted_revs = sorted(
+            revs, key=lambda r: (r.timestamp(), -r.is_remote())
+        )
+        paired_revs = {"L": [], "R": []}
+        for rev in sorted_revs:
+            if rev.is_remote():
+                paired_revs["R"].append(rev)
+                paired_revs["L"].append(None)
             else:
-                # for quick first run
-                _log.info("Creating container automatically for first run..")
-                self.add(name)
-
-    def add(self, name=_default_cname, remote=False, skip_use=False):
-        """Add one container revision. Run `rezup add -h` for help
-
-        This will create a new container revision (a new Rez venv setup) with
-        corresponding recipe file.
-
-        Usages:
-
-            - create & use new rev from container '.main' (with ~/rezup.toml)
-            $ rezup add
-
-            - create & use new rev from container 'foo' (with ~/rezup.foo.toml)
-            $ rezup add foo
-
-            - create new rev from remote container
-            $ rezup add --remote --skip-use
-
-        Args:
-            name (str): container name
-            remote (bool): add a remote revision
-            skip_use (bool): add revision and exit
-
-        """
-        if remote:
-            _log.info("Creating remote container..")
-            container = Container.create(name)
-            if not container.is_remote():
-                _log.error("Remote root is not set.")
-                sys.exit(1)
-        else:
-            _log.info("Creating local container..")
-            container = Container.create(name, force_local=True)
-
-        revision = container.new_revision()
-
-        if not skip_use:
-            sys.exit(
-                revision.use(command=self._job, wait=self._wait)
-            )
-
-    def drop(self, name):
-        """Remove a container. Run `rezup drop -h` for help
-
-        Remove entire container from disk. This command isn't ready yet, use
-        with caution.
-
-        Usages:
-
-            - remove container foo
-            $ rezup drop foo
-
-        Args:
-            name (str): container name
-
-        """
-        container = Container(name)
-        container.purge()
-
-    def status(self, name=None):
-        """Show status of containers. Run `rezup status -h` for help
-
-        Displaying some useful info about current visible containers..
-
-        Usages:
-
-            - list containers and info
-            $ rezup status
-
-            - show detailed info of specific container
-            $ rezup status foo
-
-        Args:
-            name (str): show status of specific container if name given
-
-        """
-        if name is None:
-            # show overall status
-
-            print("   Name   | Is Remote | Rev Count | Root     ")
-            print("---------------------------------------------")
-            status_line = "{name: ^10} {remote: ^11} {rev_count: ^11} {root}"
-
-            for con in iter_containers():
-                status = {
-                    "name": con.name(),
-                    "remote": "O" if con.is_remote() else "-",
-                    "rev_count": len(list(con.iter_revision())),
-                    "root": con.root(),
-                }
-                print(status_line.format(**status))
-
-        else:
-            # show specific container info
-
-            con = Container(name)
-            if con.is_remote():
-                local_con = Container(name, force_local=True)
-                remote_con = con
-            else:
-                local_con = con
-                remote_con = None
-
-            print("Container: %s" % name)
-
-            if remote_con is None and not local_con.is_exists():
-                print("NOT EXISTS.")
-                return
-
-            print("    Local: %s" % local_con.path())
-            print("   Remote: %s" % (remote_con.path() if remote_con else "-"))
-            print("")
-            print(" Local | Remote |   Rez   |       Date      | Timestamp    ")
-            print("-----------------------------------------------------------")
-            info_line = "{l: ^7}|{r: ^8}|{rez: ^9}| {date} | {time}"
-
-            # sort and paring revisions
-            revs = list(local_con.iter_revision())
-            revs += list(remote_con.iter_revision()) if remote_con else []
-            sorted_revs = sorted(
-                revs, key=lambda r: (r.timestamp(), -r.is_remote())
-            )
-            paired_revs = {"L": [], "R": []}
-            for rev in sorted_revs:
-                if rev.is_remote():
-                    paired_revs["R"].append(rev)
-                    paired_revs["L"].append(None)
+                if paired_revs["R"] and paired_revs["R"][-1] == rev:
+                    paired_revs["L"][-1] = rev
                 else:
-                    if paired_revs["R"] and paired_revs["R"][-1] == rev:
-                        paired_revs["L"][-1] = rev
-                    else:
-                        paired_revs["R"].append(None)
-                        paired_revs["L"].append(rev)
+                    paired_revs["R"].append(None)
+                    paired_revs["L"].append(rev)
 
-            # print out
-            for i, local in enumerate(paired_revs["L"]):
-                remote = paired_revs["R"][i]
+        # print out
+        for i, local in enumerate(paired_revs["L"]):
+            remote = paired_revs["R"][i]
 
-                if local is None and remote is None:
-                    continue  # not likely to happen
+            if local is None and remote is None:
+                continue  # not likely to happen
 
-                data = local or remote
-                info = {
-                    "l": "O" if local else "-",
-                    "r": "O" if remote else "-",
-                    "rez": (local.get_rez_version() or "?") if local else "-",
-                    "date": data.timestamp().strftime("%d.%b.%y %H:%M"),
-                    "time": data.dirname(),
-                }
-                print(info_line.format(**info))
-            print("")
+            data = local or remote
+            info = {
+                "l": "O" if local else "-",
+                "r": "O" if remote else "-",
+                "rez": (local.get_rez_version() or "?") if local else "-",
+                "date": data.timestamp().strftime("%d.%b.%y %H:%M"),
+                "time": data.dirname(),
+            }
+            print(info_line.format(**info))
+        print("")
 
 
 def fetch_latest_version_from_pypi():
@@ -326,40 +398,3 @@ def fetch_latest_version_from_pypi():
         return latest_str
 
     return "Failed to fetch latest %s version from PyPI.." % name
-
-
-def patch_fire_help(my_order):
-    """For patching COMMANDS order in Fire CLI help text
-
-    When passing a class into Fire, COMMANDS that are showing in help-text
-    are being sorted alphabetically. That's because the COMMANDS are listed
-    by `inspect.getmembers` which will return member in sorted ordering.
-
-    I'd like to maintain my own custom order, hence this patch.
-
-    Links:
-        https://github.com/google/python-fire/issues/298
-        https://github.com/google/python-fire/pull/310
-
-    Args:
-        my_order (list): List of command names
-
-    """
-    from fire import completion
-
-    _original = completion.VisibleMembers
-
-    def VisibleMembers(*args, **kwargs):
-        sorted_members = _original(*args, **kwargs)
-        mapped_members = dict(sorted_members)
-        sorted_names = [n for n, m in sorted_members]
-
-        re_ordered = [
-            (n, mapped_members[n]) for n in my_order if n in sorted_names
-        ] + [
-            (n, mapped_members[n]) for n in sorted_names if n not in my_order
-        ]
-
-        return re_ordered
-
-    completion.VisibleMembers = VisibleMembers
