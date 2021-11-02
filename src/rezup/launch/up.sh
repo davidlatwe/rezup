@@ -1,9 +1,9 @@
 
-if [ "__REZUP_DO__" == "script" ] ; then
+if [ "__REZUP_DO__" = "script" ] ; then
     . __REZUP_DO_SCRIPT__
     exit $?
 fi
-if [ "__REZUP_DO__" == "command" ] ; then
+if [ "__REZUP_DO__" = "command" ] ; then
     __REZUP_DO_COMMAND__
     exit $?
 fi
