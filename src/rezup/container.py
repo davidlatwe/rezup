@@ -652,6 +652,9 @@ class Revision:
     def get_rez_version(self, venv_session=None):
         """Returns rez version installed in this revision"""
         rez_location = self.locate_rez_lib(venv_session)
+        if rez_location is None:
+            return
+
         version_py = rez_location / "rez" / "utils" / "_version.py"
         if version_py.is_file():
             _locals = {"_rez_version": ""}

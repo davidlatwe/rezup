@@ -289,9 +289,9 @@ class RezupCLI:
 
                 data = local or remote
                 info = {
-                    "l": "O" if local else "",
-                    "r": "O" if remote else "",
-                    "rez": local.get_rez_version() if local else "",
+                    "l": "O" if local else "-",
+                    "r": "O" if remote else "-",
+                    "rez": (local.get_rez_version() or "?") if local else "-",
                     "date": data.timestamp().strftime("%d.%b.%y %H:%M"),
                     "time": data.dirname(),
                 }
