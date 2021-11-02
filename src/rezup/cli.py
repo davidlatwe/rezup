@@ -178,6 +178,13 @@ def use(ctx, name, local, no_wait):
             )
             ctx.exit(1)
 
+        elif container.name() != Container.DEFAULT_NAME:
+            _log.error(
+                "Container '%s' not exist, use 'rezup add' to create."
+                % container.name()
+            )
+            ctx.exit(1)
+
         else:
             # for quick first run
             _log.info("Creating container automatically for first run..")
