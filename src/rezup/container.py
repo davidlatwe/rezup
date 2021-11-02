@@ -624,7 +624,12 @@ class Revision:
 
     @_require_local  # noqa
     def locate_rez_lib(self, venv_session=None):
-        """Returns rez module location in this revision"""
+        """Returns rez module location in this revision
+
+        Returns:
+            pathlib.Path or None if not found.
+
+        """
         if venv_session is None:
             venv_path = self.path() / "venv" / "rez"
             venv_session = virtualenv.session_via_cli(args=[str(venv_path)])
@@ -650,7 +655,12 @@ class Revision:
 
     @_require_local  # noqa
     def get_rez_version(self, venv_session=None):
-        """Returns rez version installed in this revision"""
+        """Returns rez version installed in this revision
+
+        Returns:
+            str or None if not found.
+
+        """
         rez_location = self.locate_rez_lib(venv_session)
         if rez_location is None:
             return
@@ -664,7 +674,12 @@ class Revision:
 
     @_require_local  # noqa
     def production_bin_dir(self, venv_name):
-        """Returns production bin scripts dir in this revision"""
+        """Returns production bin scripts dir in this revision
+
+        Returns:
+            pathlib.Path, but the directory may not exists.
+
+        """
         bin_dirname = "Scripts" if platform.system() == "Windows" else "bin"
         venv_bin_dir = self.path() / "venv" / venv_name / bin_dirname
         return venv_bin_dir / "rez"
