@@ -3,7 +3,10 @@ import os
 import re
 import sys
 import json
+import logging
 import subprocess
+
+_log = logging.getLogger("rezup.util")
 
 
 def locate_rez_lib(container=None, create=False):
@@ -29,8 +32,8 @@ def locate_rez_lib(container=None, create=False):
 def resolve_environ(requests_or_rxt, container=None, create=False):
     """Resolve package requests with Rez from container
 
-    This will try to locate Rez lib from container, insert into sys.path,
-    and import rez to do the resolve.
+    Open a subprocess and call rez-python that is located from container to
+    resolve the request and returns the context environment.
 
     Args:
         requests_or_rxt: List of strings or list of PackageRequest objects,
@@ -45,6 +48,7 @@ def resolve_environ(requests_or_rxt, container=None, create=False):
 
     Raises:
         ContainerError: when no valid revision to use.
+        subprocess.CalledProcessError
 
     """
     from . import ContainerError
@@ -69,23 +73,28 @@ def resolve_environ(requests_or_rxt, container=None, create=False):
     if isinstance(requests_or_rxt, list):
         requests_or_rxt = " ".join(requests_or_rxt)
 
+    action_py = os.path.join(os.path.dirname(__file__), "_actions.py")
+
     args = [
         rez_python,
-        __file__,
-        _run_resolve.__action_name__,
+        "-B",  # just to be safe, no .pyc ('bad magic number in .pyc' error)
+        action_py,
+        _message_wrap,
+        "action_resolve",  # resolve and return serialized context env
         requests_or_rxt
     ]
-    popen = subprocess.Popen(
-        args,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-    )
-    out, err = popen.communicate()
-    polished_out = polish(out)
-    if polished_out:
-        return json.loads(polished_out)
+    try:
+        out = subprocess.check_output(
+            args,
+            env=env,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+    except subprocess.CalledProcessError as e:
+        _log.error(e.output)
+        raise
+
+    return json.loads(polish(out))
 
 
 def _get_revision(container=None, create=False):
@@ -110,57 +119,11 @@ def _get_revision(container=None, create=False):
     return revision
 
 
-# actions
-# notes: maybe the actions could be loaded from entry-points.
-
 _message_wrap = "::rezup.msg.start::%s::rezup.msg.end::"
 _polish_regex = re.compile(_message_wrap % "(.*)")
-
-
-def action(name):
-    def decorator(fn):
-        setattr(fn, "__action_name__", name)
-        return fn
-    return decorator
-
-
-def get_action(name):
-    for attr, obj in sys.modules[__name__].__dict__.items():
-        if name == getattr(obj, "__action_name__", None):
-            return obj
 
 
 def polish(message):
     match = _polish_regex.search(message)
     if match:
         return match.group(1)
-
-
-def flush(message):
-    message = _message_wrap % message
-    sys.stdout.write(message)
-    sys.stdout.flush()
-
-
-@action("resolve")
-def _run_resolve(requests_or_rxt):
-    from rez.resolved_context import ResolvedContext  # noqa
-
-    if os.path.isfile(requests_or_rxt):
-        context = ResolvedContext.load(requests_or_rxt)
-    else:
-        context = ResolvedContext(requests_or_rxt.split(" "))
-
-    resolved_env = context.get_environ()
-    resolved_env_str = json.dumps(resolved_env)
-    flush(resolved_env_str)
-
-
-if __name__ == "__main__":
-    action_name = sys.argv[:2][-1]
-    action_func = get_action(action_name)
-    if action_func is None:
-        raise Exception("Action not found: %s" % action_name)
-
-    argv = sys.argv[2:]
-    action_func(*argv)
