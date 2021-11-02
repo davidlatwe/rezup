@@ -54,6 +54,12 @@ _log = logging.getLogger("rezup")
 #   - [ ] REZUP_CLEAN_AFTER
 
 
+if _PY2:
+    string_types = basestring,  # noqa
+else:
+    string_types = str,
+
+
 def makedirs(path):
     path = str(path)
     if not os.path.isdir(path):
@@ -411,7 +417,7 @@ class Revision:
 
         def file_loader(d):
             return [d[k] for k in sorted([
-                k for k, v in d.items() if isinstance(v, str)])]
+                k for k, v in d.items() if isinstance(v, string_types)])]
 
         dot_env = recipe.get("dotenv")
         if dot_env:
