@@ -320,6 +320,7 @@ def status(name=None):
         info_line = "{l: ^7}|{r: ^8}|{rez: ^9}| {date} | {time}"
 
         # sort and paring revisions
+        # https://gist.github.com/davidlatwe/a729e06c54b712db72516d17fdbcbe98
         revs = list(local_con.iter_revision())
         revs += list(remote_con.iter_revision()) if remote_con else []
         sorted_revs = sorted(

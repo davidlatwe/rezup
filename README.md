@@ -146,7 +146,7 @@ Recipe file name should embed container name (if not default container) so that 
 Please read [launch/README](src/rezup/launch/README.md).
 
 
-## Util
+## Programmatic usage
 
 ```python
 from rezup import util

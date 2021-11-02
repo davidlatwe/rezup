@@ -1,7 +1,20 @@
 
+site_name: Rezup
+
 theme:
   name: "material"
 
 plugins:
 - search
-- mkdocstrings
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        rendering:
+          show_source: false
+    custom_templates: templates
+    watch:
+      - src/rezup
+
+nav:
+    - Home: Reference.md
