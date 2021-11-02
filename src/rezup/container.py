@@ -345,6 +345,8 @@ class Revision:
                 "venvs": ["rez"] + [t.name for t in extensions if t.isolation],
             }, indent=4))
 
+        _log.info("Revision created: %s" % self)
+
     def _install(self, rez_, extensions=None, shared_lib=None):
         """Construct Rez virtual environment by recipe
         """
