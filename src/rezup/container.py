@@ -9,7 +9,6 @@ import getpass
 import pkgutil
 import logging
 import platform
-import tempfile
 import functools
 import subprocess
 import virtualenv
@@ -527,45 +526,36 @@ class Revision:
 
         else:
             # Launch subprocess
-            replacement = dict()
             environment = self._compose_env()
             shell_name, shell_exec = self._get_shell()
 
-            if command and os.path.isfile(command[0]):
-                # run shell script and exit
-                block = False
-                replacement["__REZUP_DO__"] = "script"
-                replacement["__REZUP_DO_SCRIPT__"] = " ".join(command)
-
-            elif command:
-                # run shell command and exit
-                block = False
-                replacement["__REZUP_DO__"] = "command"
-                replacement["__REZUP_DO_COMMAND__"] = " ".join(command)
+            if command:
+                # run command and exit
+                if command[0] == ".":
+                    cmd = command
+                else:
+                    exe = command[0]
+                    exe = shell.which(exe, env=environment) or exe
+                    cmd = [exe] + command[1:]
 
             else:
                 # interactive shell
-                block = True
                 _con_name = self._container.name()
                 _con_from = "remote" if self._is_pulled else "local"
-                replacement["__REZUP_SHELL__"] = shell_exec
                 prompt = "rezup (%s/%s) " % (_con_name, _con_from)
                 prompt = shell.format_prompt_code(prompt, shell_name)
                 environment.update({
                     "REZUP_PROMPT": os.getenv("REZUP_PROMPT", prompt),
                 })
 
-            launch_script = shell.generate_launch_script(
-                shell_name,
-                dst_dir=tempfile.mkdtemp(),
-                replacement=replacement
-            )
-            cmd = shell.get_launch_cmd(shell_name,
-                                       shell_exec,
-                                       launch_script,
-                                       block=block)
+                cmd = shell.get_launch_cmd(
+                    shell_name,
+                    shell_exec,
+                    interactive=True,
+                )
 
             popen = subprocess.Popen(cmd, env=environment)
+
             return popen
 
     def use(self, command=None, wait=True):

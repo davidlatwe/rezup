@@ -3,6 +3,7 @@ import os
 import sys
 import stat
 import logging
+import tempfile
 import shellingham
 
 if sys.version_info.major == 2 and os.name == "nt":
@@ -17,9 +18,7 @@ if sys.version_info.major == 2 and os.name == "nt":
 # not all shells been tested.
 LAUNCH_SCRIPTS = {
     "up.bat": ["cmd"],
-    "up.csh": ["csh", "tcsh"],
     "up.ps1": ["pwsh", "powershell"],
-    "up.sh":  ["sh", "bash", "zsh"],
 }
 
 
@@ -53,24 +52,32 @@ def provide_default():
     return shell
 
 
-def get_launch_cmd(shell_name, shell_exec, launch_script, block=True):
+def get_launch_cmd(shell_name, shell_exec, interactive=False):
     """"""
     if shell_name == "cmd":
         command = [shell_exec]
-        if block:
+        if interactive:
             command += ["/Q", "/K"]
         else:
             command += ["/Q", "/C"]
 
     elif shell_name in ("powershell", "pwsh"):
         command = [shell_exec, "-NoLogo", "-File"]
-        if block:
+        if interactive:
             command.insert(1, "-NoExit")
 
     else:
         command = [shell_exec]
+        if interactive:
+            command.append("-i")
 
-    command.append(str(launch_script))
+    # launch script for prompt, on Windows
+    if shell_name in ("cmd", "powershell", "pwsh"):
+        launch_script = generate_launch_script(
+            shell_name,
+            dst_dir=tempfile.mkdtemp(),
+        )
+        command.append(str(launch_script))
 
     _log.debug("Launch command:")
     _log.debug(" ".join(command))
@@ -144,3 +151,63 @@ PROMPT_CODES = {
     "zsh":        _PROMPT_CODES_SH,
     "bash":       _PROMPT_CODES_SH,
 }
+
+
+# ported from rez (modified from distlib)
+def which(cmd, mode=os.F_OK | os.X_OK, env=None):
+    """Given a command, mode, and a PATH string, return the path which
+    conforms to the given mode on the PATH, or None if there is no such
+    file.
+
+    `mode` defaults to os.F_OK | os.X_OK. `env` defaults to os.environ,
+    if not supplied.
+    """
+    # Check that a given file can be accessed with the correct mode.
+    # Additionally check that `file` is not a directory, as on Windows
+    # directories pass the os.access check.
+    def _access_check(fn, mode_):
+        return (os.path.exists(fn) and os.access(fn, mode_)
+                and not os.path.isdir(fn))
+
+    # Short circuit. If we're given a full path which matches the mode
+    # and it exists, we're done here.
+    if _access_check(cmd, mode):
+        return cmd
+
+    if env is None:
+        env = os.environ
+
+    path = env.get("PATH", os.defpath).split(os.pathsep)
+
+    if sys.platform == "win32":
+        # The current directory takes precedence on Windows.
+        if os.curdir not in path:
+            path.insert(0, os.curdir)
+
+        # PATHEXT is necessary to check on Windows.
+        default_pathext = \
+            '.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC'
+        pathext = env.get("PATHEXT", default_pathext).split(os.pathsep)
+        # See if the given file matches any of the expected path extensions.
+        # This will allow us to short circuit when given "python.exe".
+        matches = [cmd for ext in pathext if cmd.lower().endswith(ext.lower())]
+        # If it does match, only test that one, otherwise we have to try
+        # others.
+        files = [cmd] if matches else [cmd + ext.lower() for ext in pathext]
+    else:
+        # On other platforms you don't have things like PATHEXT to tell you
+        # what file suffixes are executable, so just pass on cmd as-is.
+        files = [cmd]
+
+    seen = set()
+    for dir_ in path:
+        dir_ = os.path.normcase(dir_)
+        if dir_ not in seen:
+            seen.add(dir_)
+            for the_file in files:
+                name = os.path.join(dir_, the_file)
+                # On windows the system paths might have %systemroot%
+                name = os.path.expandvars(name)
+                if _access_check(name, mode):
+                    return name
+    return None
