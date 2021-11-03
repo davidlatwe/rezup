@@ -2,6 +2,7 @@
 import os
 import sys
 import click
+import shlex
 import logging
 from . import get_rezup_version, __version__
 from .container import Container, iter_containers
@@ -52,13 +53,16 @@ def _parse_use_cmd():
 
     """
     __ = sys.argv.index("--")
+    if __ + 1 != len(sys.argv):
+        # Original
+        args = sys.argv[__ + 1:]
 
-    args = []
-    for a in sys.argv[__ + 1:]:
-        ra = repr(a)
-        args.append(
-            ra if "'" in a and not ra.startswith("'") else a
-        )
+    else:
+        # Write raw input to shell stdin
+        # args = [input("Type in command:\n")]
+
+        # Just run the command
+        args = shlex.split(input("Type in command:\n"))
 
     sys.argv[:] = sys.argv[:__]
 

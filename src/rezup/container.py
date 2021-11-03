@@ -560,12 +560,34 @@ class Revision:
                 dst_dir=tempfile.mkdtemp(),
                 replacement=replacement
             )
+            # # Original
+            # cmd = shell.get_launch_cmd(shell_name,
+            #                            shell_exec,
+            #                            launch_script,
+            #                            block=block)
+            #
+            # popen = subprocess.Popen(cmd, env=environment)
+
+            # # Write raw input to shell stdin
+            # cmd = shell.get_launch_cmd(shell_name,
+            #                            shell_exec,
+            #                            "",
+            #                            block=True)
+            #
+            # popen = subprocess.Popen(cmd, env=environment,
+            #                          stdin=subprocess.PIPE,
+            #                          universal_newlines=True)
+            # popen.communicate(input=" ".join(command) + "\n")
+
+            # Just run the command
             cmd = shell.get_launch_cmd(shell_name,
                                        shell_exec,
                                        launch_script,
                                        block=block)
 
-            popen = subprocess.Popen(cmd, env=environment)
+            popen = subprocess.Popen(command, env=environment,
+                                     shell=True)
+
             return popen
 
     def use(self, command=None, wait=True):
