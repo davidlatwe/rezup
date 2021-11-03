@@ -2,7 +2,6 @@
 import os
 import sys
 import click
-import shlex
 import logging
 from . import get_rezup_version, __version__
 from .container import Container, iter_containers
@@ -43,7 +42,8 @@ def run():
 
 
 def _parse_use_cmd():
-    """Parse job command from sys.argv for command 'rezup use'"""
+    """Parse job command from sys.argv for command 'rezup use -- [COMMAND]'
+    """
     double_dash_pos = sys.argv.index("--")
     args = sys.argv[double_dash_pos + 1:]
     sys.argv[:] = sys.argv[:double_dash_pos]
