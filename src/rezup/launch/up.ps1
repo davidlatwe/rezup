@@ -1,13 +1,4 @@
 
-if ("__REZUP_DO__" -eq "script") {
-    & __REZUP_DO_SCRIPT__
-    exit $LastExitCode
-}
-if ("__REZUP_DO__" -eq "command") {
-    __REZUP_DO_COMMAND__
-    exit $LastExitCode
-}
-
 if ($env:REZUP_PROMPT) {
     function global:_old_virtual_prompt {
         ""

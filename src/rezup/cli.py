@@ -43,29 +43,10 @@ def run():
 
 
 def _parse_use_cmd():
-    """Parse job command from sys.argv for command 'rezup use'
-
-    For input like the example below, the full command cannot be parsed
-    by fire due to the `-` in there. Hence this helper. Also, quoting
-    is being handled as well. Experimentally..
-
-        $ rezup use -do rez-env -- python -c "print('hello')"
-
-    """
-    __ = sys.argv.index("--")
-    if __ + 1 != len(sys.argv):
-        # Original
-        args = sys.argv[__ + 1:]
-
-    else:
-        # Write raw input to shell stdin
-        # args = [input("Type in command:\n")]
-
-        # Just run the command
-        args = shlex.split(input("Type in command:\n"))
-
-    sys.argv[:] = sys.argv[:__]
-
+    """Parse job command from sys.argv for command 'rezup use'"""
+    double_dash_pos = sys.argv.index("--")
+    args = sys.argv[double_dash_pos + 1:]
+    sys.argv[:] = sys.argv[:double_dash_pos]
     return args
 
 
