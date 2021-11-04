@@ -239,11 +239,11 @@ class Container:
                 _log.debug("Found latest revision.")
                 return revision
 
-    def get_revision_at_time(self, timestamp, strict=False, only_ready=True):
+    def get_revision_by_time(self, timestamp, fallback=False, only_ready=True):
         for revision in self.iter_revision():
             if not only_ready or revision.is_ready():
                 if (revision.timestamp() == timestamp
-                        or (not strict and revision.timestamp() <= timestamp)):
+                        or (fallback and revision.timestamp() <= timestamp)):
 
                     _log.debug("Found time matched revision.")
                     return revision
@@ -270,11 +270,12 @@ class Revision:
         self._is_pulled = False
 
     def __repr__(self):
-        return "%s(valid=%d, ready=%d, remote=%d, path=%r)" % (
+        return "%s(valid=%d, ready=%d, remote=%d, time=%s, path=%r)" % (
             self.__class__.__name__,
             int(self.is_valid()),
             int(self.is_ready()),
             int(self.is_remote()),
+            self.time_str() or "?",
             self._path.resolve(),
         )
 
@@ -395,6 +396,10 @@ class Revision:
     def timestamp(self):
         return self._timestamp
 
+    def time_str(self):
+        return self._timestamp.strftime("%d.%b.%y %H:%M") \
+            if self._timestamp else ""
+
     def container(self):
         return self._container
 
@@ -467,7 +472,7 @@ class Revision:
             if revision.timestamp() > self._timestamp:
                 yield revision
 
-    def pull(self, check_out=True):
+    def pull(self, check_out=True, fallback=False):
         """Return corresponding local side revision
 
         If the revision is from remote container, calling this method will
@@ -477,9 +482,10 @@ class Revision:
         If the revision is from local container, return `self`.
 
         Args:
-            check_out(bool, optional): When no matched local revision,
+            check_out (bool, optional): When no matched local revision,
                 create one if True or just return None at the end.
                 Default is True.
+            fallback (bool, optional)
 
         Returns:
             Revision or None
@@ -491,17 +497,30 @@ class Revision:
         # get local
         _con_name = self._container.name()
         _con_recipe = self._container.recipe()  # careful, this affect's root
+
         local = Container(_con_name, recipe=_con_recipe, force_local=True)
-        revision = local.get_revision_at_time(self._timestamp, strict=True)
-        if revision is None and check_out:
+        rev = local.get_revision_by_time(self._timestamp,
+                                         fallback=fallback,
+                                         only_ready=True)
+
+        _allow_create = rev is None and check_out
+        _did_fallback = rev.timestamp() != self._timestamp if rev else False
+
+        if not fallback and _allow_create:
             _log.info("Pulling from remote container: %s" % self._container)
-            revision = Revision(container=local, dirname=self._dirname)
-            revision._write(pulling=self)
+            rev = Revision(container=local, dirname=self._dirname)
+            rev._write(pulling=self)
 
-        if revision is not None:
-            revision._is_pulled = True
+        if fallback and _did_fallback:
+            _log.warning(
+                "Local revision at exact time (%s) is not ready, "
+                "fallback to %s" % (self.time_str(), rev)
+            )
 
-        return revision
+        if rev is not None:
+            rev._is_pulled = True
+
+        return rev
 
     def spawn_shell(self, command=None):
         """Spawn a sub-shell
@@ -513,15 +532,23 @@ class Revision:
         Returns:
             subprocess.Popen
 
+        Raises:
+            ContainerError
+
         """
         if not self.is_valid():
-            raise Exception("Cannot use invalid revision.")
+            raise ContainerError("Cannot use invalid revision.")
         if not self.is_ready():
-            raise Exception("Revision is not ready to be used.")
+            raise ContainerError("Revision is not ready to be used.")
 
         if self.is_remote():
             # use local
             revision = self.pull()
+            if revision is None:
+                raise ContainerError("No revision pulled.")
+            if not revision.is_ready():
+                raise ContainerError("Revision is not ready to be used.")
+
             return revision.spawn_shell(command=command)
 
         else:

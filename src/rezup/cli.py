@@ -349,7 +349,7 @@ def status(name=None):
                 "l": "O" if local else "-",
                 "r": "O" if remote else "-",
                 "rez": (local.get_rez_version() or "?") if local else "-",
-                "date": data.timestamp().strftime("%d.%b.%y %H:%M"),
+                "date": data.time_str(),
                 "time": data.dirname(),
             }
             print(info_line.format(**info))
