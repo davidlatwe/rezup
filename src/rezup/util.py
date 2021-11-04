@@ -5,13 +5,21 @@ import sys
 import json
 import logging
 import subprocess
-from . import Container, ContainerError
+from typing import Union
+
+try:
+    from pathlib import Path  # noqa, py3
+except ImportError:
+    from pathlib2 import Path  # noqa, py2
+
+from . import Revision, Container, ContainerError
 
 
 _log = logging.getLogger("rezup.util")
 
 
 def resolve_environ(revision, requests_or_rxt):
+    # type: (Revision, Union[list, str, Path]) -> dict
     """Resolve package requests with Rez from container
 
     Open a subprocess and call rez-python that is located from container to
@@ -77,15 +85,17 @@ def resolve_environ(revision, requests_or_rxt):
 
 
 def get_revision(container=None, create=False, fallback=True):
+    # type: (str, bool, bool) -> Revision
     """Returns a revision instance from container
 
     Args:
         container: Container name, use default container if name not given.
         create: Create local revision if not exists, default False.
-        fallback:
+        fallback: If True, accept earlier revision when no timestamp matched
+            found in local.
 
     Returns:
-        Revision
+        An instance of Revision
 
     Raises:
         ContainerError

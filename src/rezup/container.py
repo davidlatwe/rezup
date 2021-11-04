@@ -15,6 +15,7 @@ import virtualenv
 from datetime import datetime
 from dotenv import dotenv_values
 from distlib.scripts import ScriptMaker
+from typing import Generator
 
 try:
     from dotenv.compat import StringIO  # py2
@@ -75,6 +76,7 @@ def norm_path(path):
 
 
 def iter_containers():
+    # type: () -> Generator[Container]
     """Iterate containers by recipes (~/rezup[.{name}].toml)
 
     Yields:
@@ -91,6 +93,17 @@ def iter_containers():
 
 
 def get_container_root(recipe, remote=False):
+    # type: (ContainerRecipe, bool) -> Path
+    """
+
+    Args:
+        recipe: The container recipe to lookup from.
+        remote: Fetch remote root if True, otherwise local.
+
+    Returns:
+        Container root path, local or remote one.
+
+    """
     data = recipe.data()
     if remote:
         remote = \
@@ -157,6 +170,16 @@ class Container:
 
     @classmethod
     def create(cls, name, force_local=False):
+        # type: (str, bool) -> Container
+        """Create container from recipe
+
+        Args:
+            name: The name of container.
+            force_local: Create as local if True, or try remote.
+
+        Returns:
+            A container instance.
+        """
         recipe = ContainerRecipe(name)
         _log.debug("Sourcing recipe from: %s" % recipe)
         if not recipe.is_file():
@@ -165,36 +188,45 @@ class Container:
         return Container(name, recipe, force_local)
 
     def root(self):
+        # type: () -> Path
         """Root path of current container"""
         return self._root
 
     def name(self):
+        # type: () -> str
         """Name of current container"""
         return self._name
 
     def path(self):
+        # type: () -> Path
         """Path of current container"""
         return self._path
 
     def recipe(self):
+        # type: () -> ContainerRecipe
         """Returns an Recipe instance that binds to this container"""
         return self._recipe
 
     def libs(self):
+        # type: () -> Path
         """Root path of current container's shared libraries"""
         return self._path / "libs"
 
     def revisions(self):
+        # type: () -> Path
         """Root path of current container's revisions"""
         return self._path / "revisions"
 
     def is_exists(self):
+        # type: () -> bool
         return self._path.is_dir()
 
     def is_empty(self):
+        # type: () -> bool
         return not bool(next(self.iter_revision(), None))
 
     def is_remote(self):
+        # type: () -> bool
         return self._remote
 
     def purge(self):
@@ -215,6 +247,16 @@ class Container:
             rmtree(root)
 
     def iter_revision(self, validate=True, latest_first=True):
+        # type: (bool, bool) -> Generator[Revision]
+        """
+
+        Args:
+            validate:
+            latest_first:
+
+        Returns:
+
+        """
         _log.debug("Iterating revisions in container %s.." % self)
 
         if not self.is_exists():
@@ -234,12 +276,34 @@ class Container:
                 yield revision
 
     def get_latest_revision(self, only_ready=True):
+        # type: (bool) -> Revision
+        """Returns the latest revision
+
+        Args:
+            only_ready: Include revisions that are not in ready state if False
+
+        Returns:
+            An instance of Revision if found, or None.
+
+        """
         for revision in self.iter_revision():
             if not only_ready or revision.is_ready():
                 _log.debug("Found latest revision.")
                 return revision
 
     def get_revision_by_time(self, timestamp, fallback=False, only_ready=True):
+        # type: (datetime, bool, bool) -> Revision
+        """Returns a revision that match the timestamp
+
+        Args:
+            timestamp: a time for matching revision
+            fallback: If True, accept earlier revision when no exact matched
+            only_ready: Include revisions that are not in ready state if False
+
+        Returns:
+            An instance of Revision if found, or None.
+
+        """
         for revision in self.iter_revision():
             if not only_ready or revision.is_ready():
                 if (revision.timestamp() == timestamp
@@ -251,6 +315,13 @@ class Container:
         _log.debug("No time matched revision found.")
 
     def new_revision(self):
+        # type: () -> Revision
+        """Create new revision
+
+        Returns:
+            An instance of Revision that just created
+
+        """
         return Revision.create(self)
 
 
