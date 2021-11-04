@@ -17,8 +17,8 @@ else:
 from ._vendor import toml
 
 
-DEFAULT_CONTAINER_NAME = ".main"
-DEFAULT_CONTAINER_RECIPES = Path.home()
+DEFAULT_CONTAINER_NAME = ".main"  #: default container name: `.main`
+DEFAULT_CONTAINER_RECIPES = Path.home()  #: user home directory
 
 
 class BaseRecipe(DictMixin, object):
@@ -103,7 +103,7 @@ class ContainerRecipe(BaseRecipe):
 
     """
     REGEX = re.compile("rezup.?(.*).toml")
-    RECIPES_DIR = DEFAULT_CONTAINER_RECIPES
+    RECIPES_DIR = DEFAULT_CONTAINER_RECIPES  #: `DEFAULT_CONTAINER_RECIPES`
 
     def __init__(self, name=None):
         super(ContainerRecipe, self).__init__(name)

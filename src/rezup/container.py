@@ -76,11 +76,10 @@ def norm_path(path):
 
 
 def iter_containers():
-    # type: () -> Generator[Container]
-    """Iterate containers by recipes (~/rezup[.{name}].toml)
+    """Iterate containers by recipes (`~/rezup[.{name}].toml`)
 
     Yields:
-        Container
+        Container: Instance of `Container`, could be linked to remote or local.
 
     """
     for recipe in ContainerRecipe.iter_recipes():
@@ -93,15 +92,27 @@ def iter_containers():
 
 
 def get_container_root(recipe, remote=False):
-    # type: (ContainerRecipe, bool) -> Path
-    """
+    """Get container root path from recipe
+
+    ```toml
+    # rezup.foo.toml
+    [root]
+    local = false
+    remote = "/path/to/remote/containers"
+
+    ```
+
+    If the `recipe` represents the above example recipe file, container named
+    `foo` will have local root set to `rezup.recipe.DEFAULT_CONTAINER_RECIPES`,
+    unless environ variable `REZUP_ROOT_LOCAL` has value. And the remote root
+    will set to `/path/to/remote/containers`.
 
     Args:
-        recipe: The container recipe to lookup from.
-        remote: Fetch remote root if True, otherwise local.
+        recipe (rezup.ContainerRecipe): The container recipe to lookup from.
+        remote (bool): Fetch remote root if True, otherwise local.
 
     Returns:
-        Container root path, local or remote one.
+        pathlib.Path: Container root path, local or remote one.
 
     """
     data = recipe.data()
@@ -128,7 +139,7 @@ class Container:
     affecting any existing consumer.
 
     In filesystem, a container is a folder that has at least one Rez venv
-    installation exists, and those Rez venv folders (revisions) are named
+    installation exists, and those Rez venv folders (`Revision`) are named
     by timestamp, so when the container is being asked for a venv to use,
     the current latest available one will be sorted out.
 
@@ -140,8 +151,18 @@ class Container:
     contains the venv installation manifest file, and when being asked, a
     venv will be created locally or re-used if same revision exists in local.
 
+    Args:
+        name (str, optional): Container name, use `Container.DEFAULT_NAME`
+            if not given.
+        recipe (rezup.recipe.ContainerRecipe, optional): A
+            `rezup.recipe.ContainerRecipe` object to help constructing
+            container, will look into `rezup.recipe.ContainerRecipe.RECIPES_DIR`
+            if not given.
+        force_local (bool, optional): Default `False`. Ignore linking remote
+            even if the remote path has set, always link to local if `True`.
+
     """
-    DEFAULT_NAME = DEFAULT_CONTAINER_NAME
+    DEFAULT_NAME = DEFAULT_CONTAINER_NAME  #: `rezup.recipe.DEFAULT_CONTAINER_NAME`
 
     def __init__(self, name=None, recipe=None, force_local=False):
         name = name or self.DEFAULT_NAME
@@ -170,15 +191,14 @@ class Container:
 
     @classmethod
     def create(cls, name, force_local=False):
-        # type: (str, bool) -> Container
-        """Create container from recipe
+        """Create container from recipe.
 
         Args:
-            name: The name of container.
-            force_local: Create as local if True, or try remote.
+            name (str): The name of container.
+            force_local (bool): Create as local if True, or try remote.
 
         Returns:
-            A container instance.
+            Container: A container instance.
         """
         recipe = ContainerRecipe(name)
         _log.debug("Sourcing recipe from: %s" % recipe)
@@ -188,45 +208,66 @@ class Container:
         return Container(name, recipe, force_local)
 
     def root(self):
-        # type: () -> Path
-        """Root path of current container"""
+        """
+        Returns:
+            pathlib.Path: Path to where this container is located.
+        """
         return self._root
 
     def name(self):
-        # type: () -> str
-        """Name of current container"""
+        """
+        Returns:
+            str: Container name.
+        """
         return self._name
 
     def path(self):
-        # type: () -> Path
-        """Path of current container"""
+        """
+        Returns:
+            pathlib.Path: Full path of this container.
+        """
         return self._path
 
     def recipe(self):
-        # type: () -> ContainerRecipe
-        """Returns an Recipe instance that binds to this container"""
+        """
+        Returns:
+            ContainerRecipe: The recipe instance that binds to this container.
+        """
         return self._recipe
 
     def libs(self):
-        # type: () -> Path
-        """Root path of current container's shared libraries"""
+        """
+        Returns:
+            pathlib.Path: Path to this container's shared libraries.
+        """
         return self._path / "libs"
 
     def revisions(self):
-        # type: () -> Path
-        """Root path of current container's revisions"""
+        """
+        Returns:
+            pathlib.Path: Path to this container's revisions.
+        """
         return self._path / "revisions"
 
     def is_exists(self):
-        # type: () -> bool
+        """
+        Returns:
+            bool: Return `True` if this container exists.
+        """
         return self._path.is_dir()
 
     def is_empty(self):
-        # type: () -> bool
+        """
+        Returns:
+            bool: Return `True` if this container has no valid revisions.
+        """
         return not bool(next(self.iter_revision(), None))
 
     def is_remote(self):
-        # type: () -> bool
+        """
+        Returns:
+            bool: Return `True` if this container is linked to remote side.
+        """
         return self._remote
 
     def purge(self):
@@ -247,14 +288,17 @@ class Container:
             rmtree(root)
 
     def iter_revision(self, validate=True, latest_first=True):
-        # type: (bool, bool) -> Generator[Revision]
-        """
+        """Iterating revisions from this container.
 
         Args:
-            validate:
-            latest_first:
+            validate (bool, optional): Default `True`. Only yield revisions
+                that are valid if `True`.
+            latest_first (bool): Default `True`. Yield revisions based on
+                it's directory name (timestamp string) in descending order,
+                or ascending if `False`.
 
-        Returns:
+        Yields:
+            Revision: `Revision` instances that match the condition.
 
         """
         _log.debug("Iterating revisions in container %s.." % self)
@@ -276,14 +320,14 @@ class Container:
                 yield revision
 
     def get_latest_revision(self, only_ready=True):
-        # type: (bool) -> Revision
-        """Returns the latest revision
+        """Get latest revision from this container.
 
         Args:
-            only_ready: Include revisions that are not in ready state if False
+            only_ready (bool): Default `True`. Include revisions that are not
+                in ready state if `False`.
 
         Returns:
-            An instance of Revision if found, or None.
+            Revision: An instance of `Revision` if found, or `None`.
 
         """
         for revision in self.iter_revision():
@@ -292,16 +336,15 @@ class Container:
                 return revision
 
     def get_revision_by_time(self, timestamp, fallback=False, only_ready=True):
-        # type: (datetime, bool, bool) -> Revision
         """Returns a revision that match the timestamp
 
         Args:
-            timestamp: a time for matching revision
-            fallback: If True, accept earlier revision when no exact matched
-            only_ready: Include revisions that are not in ready state if False
+            timestamp (datetime.datetime): a time for matching revision
+            fallback (bool): If True, accept earlier revision when no exact matched
+            only_ready (bool): Include revisions that are not in ready state if False
 
         Returns:
-            An instance of Revision if found, or None.
+            Revision: An instance of `Revision` if found, or `None`.
 
         """
         for revision in self.iter_revision():
@@ -315,11 +358,10 @@ class Container:
         _log.debug("No time matched revision found.")
 
     def new_revision(self):
-        # type: () -> Revision
-        """Create new revision
+        """Create a new revision
 
         Returns:
-            An instance of Revision that just created
+            Revision: An instance of `Revision` that just created.
 
         """
         return Revision.create(self)

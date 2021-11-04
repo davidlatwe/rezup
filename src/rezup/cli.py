@@ -20,7 +20,11 @@ def _disable_rezup_if_entered(ctx):
 
 
 def run():
-    """CLI entry point
+    """CLI entry point.
+
+    ```
+    $ rezup --help
+    ```
     """
     obj = {
         "job": None,
@@ -358,6 +362,12 @@ def status(name=None):
 
 
 def fetch_latest_version_from_pypi():
+    """Parse latest `rezup-api` package version from PyPI.
+
+    ```
+    $ rezup --latest
+    ```
+    """
     import re
 
     try:
