@@ -270,11 +270,12 @@ class Revision:
         self._is_pulled = False
 
     def __repr__(self):
-        return "%s(valid=%d, ready=%d, remote=%d, path=%r)" % (
+        return "%s(valid=%d, ready=%d, remote=%d, time=%s, path=%r)" % (
             self.__class__.__name__,
             int(self.is_valid()),
             int(self.is_ready()),
             int(self.is_remote()),
+            self.time_str() or "?",
             self._path.resolve(),
         )
 
@@ -394,6 +395,10 @@ class Revision:
 
     def timestamp(self):
         return self._timestamp
+
+    def time_str(self):
+        return self._timestamp.strftime("%d.%b.%y %H:%M") \
+            if self._timestamp else ""
 
     def container(self):
         return self._container
