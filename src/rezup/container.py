@@ -511,6 +511,12 @@ class Revision:
         if revision is not None:
             revision._is_pulled = True
 
+            if fallback and revision.timestamp() != self._timestamp:
+                _log.warning(
+                    "Local revision at exact time (%s) is not ready, "
+                    "fallback to %s" % (self.time_str(), revision)
+                )
+
         return revision
 
     def spawn_shell(self, command=None):
@@ -523,15 +529,23 @@ class Revision:
         Returns:
             subprocess.Popen
 
+        Raises:
+            ContainerError
+
         """
         if not self.is_valid():
-            raise Exception("Cannot use invalid revision.")
+            raise ContainerError("Cannot use invalid revision.")
         if not self.is_ready():
-            raise Exception("Revision is not ready to be used.")
+            raise ContainerError("Revision is not ready to be used.")
 
         if self.is_remote():
             # use local
             revision = self.pull()
+            if revision is None:
+                raise ContainerError("No revision pulled.")
+            if not revision.is_ready():
+                raise ContainerError("Revision is not ready to be used.")
+
             return revision.spawn_shell(command=command)
 
         else:
