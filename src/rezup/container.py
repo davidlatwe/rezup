@@ -239,11 +239,11 @@ class Container:
                 _log.debug("Found latest revision.")
                 return revision
 
-    def get_revision_at_time(self, timestamp, strict=False, only_ready=True):
+    def get_revision_by_time(self, timestamp, fallback=False, only_ready=True):
         for revision in self.iter_revision():
             if not only_ready or revision.is_ready():
                 if (revision.timestamp() == timestamp
-                        or (not strict and revision.timestamp() <= timestamp)):
+                        or (fallback and revision.timestamp() <= timestamp)):
 
                     _log.debug("Found time matched revision.")
                     return revision
@@ -467,7 +467,7 @@ class Revision:
             if revision.timestamp() > self._timestamp:
                 yield revision
 
-    def pull(self, check_out=True):
+    def pull(self, check_out=True, fallback=False):
         """Return corresponding local side revision
 
         If the revision is from remote container, calling this method will
@@ -477,9 +477,10 @@ class Revision:
         If the revision is from local container, return `self`.
 
         Args:
-            check_out(bool, optional): When no matched local revision,
+            check_out (bool, optional): When no matched local revision,
                 create one if True or just return None at the end.
                 Default is True.
+            fallback (bool, optional)
 
         Returns:
             Revision or None
@@ -491,9 +492,13 @@ class Revision:
         # get local
         _con_name = self._container.name()
         _con_recipe = self._container.recipe()  # careful, this affect's root
+
         local = Container(_con_name, recipe=_con_recipe, force_local=True)
-        revision = local.get_revision_at_time(self._timestamp, strict=True)
-        if revision is None and check_out:
+        revision = local.get_revision_by_time(self._timestamp,
+                                              fallback=fallback,
+                                              only_ready=True)
+
+        if revision is None and check_out and not fallback:
             _log.info("Pulling from remote container: %s" % self._container)
             revision = Revision(container=local, dirname=self._dirname)
             revision._write(pulling=self)
