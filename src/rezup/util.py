@@ -50,7 +50,7 @@ def resolve_environ(revision, requests_or_rxt):
                              % revision.path())
 
     if isinstance(requests_or_rxt, list):
-        requests_or_rxt = " ".join(requests_or_rxt)
+        requests_or_rxt = " ".join([str(r) for r in requests_or_rxt])
 
     action_py = os.path.join(os.path.dirname(__file__), "_actions.py")
 
@@ -60,7 +60,7 @@ def resolve_environ(revision, requests_or_rxt):
         action_py,
         _message_wrap,
         "action_resolve",  # resolve and return serialized context env
-        requests_or_rxt
+        str(requests_or_rxt),
     ]
     try:
         out = subprocess.check_output(
