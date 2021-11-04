@@ -151,10 +151,10 @@ Please read [launch/README](src/rezup/launch/README.md).
 ```python
 from rezup import util
 
-# returns rez lib location from container
-util.locate_rez_lib()
+# returns a revision from container
+revision = util.get_revision()
 
 # resolve package requests with Rez from container
-util.resolve_environ(["pkg_a", "pkg_b"])
+env = util.resolve_environ(revision, ["pkg_a", "pkg_b"])
 
 ```
