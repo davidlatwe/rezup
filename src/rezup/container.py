@@ -499,25 +499,28 @@ class Revision:
         _con_recipe = self._container.recipe()  # careful, this affect's root
 
         local = Container(_con_name, recipe=_con_recipe, force_local=True)
-        revision = local.get_revision_by_time(self._timestamp,
-                                              fallback=fallback,
-                                              only_ready=True)
+        rev = local.get_revision_by_time(self._timestamp,
+                                         fallback=fallback,
+                                         only_ready=True)
 
-        if revision is None and check_out and not fallback:
+        _allow_create = rev is None and check_out
+        _did_fallback = rev.timestamp() != self._timestamp if rev else False
+
+        if not fallback and _allow_create:
             _log.info("Pulling from remote container: %s" % self._container)
-            revision = Revision(container=local, dirname=self._dirname)
-            revision._write(pulling=self)
+            rev = Revision(container=local, dirname=self._dirname)
+            rev._write(pulling=self)
 
-        if revision is not None:
-            revision._is_pulled = True
+        if fallback and _did_fallback:
+            _log.warning(
+                "Local revision at exact time (%s) is not ready, "
+                "fallback to %s" % (self.time_str(), rev)
+            )
 
-            if fallback and revision.timestamp() != self._timestamp:
-                _log.warning(
-                    "Local revision at exact time (%s) is not ready, "
-                    "fallback to %s" % (self.time_str(), revision)
-                )
+        if rev is not None:
+            rev._is_pulled = True
 
-        return revision
+        return rev
 
     def spawn_shell(self, command=None):
         """Spawn a sub-shell
