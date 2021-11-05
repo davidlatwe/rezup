@@ -1,0 +1,31 @@
+
+.md-typeset p,
+.md-typeset__scrollwrap,
+.md-typeset details,
+.md-typeset details.quote,
+.md-typeset summary:before
+{
+    padding-left: 1.2rem;
+    border-left: 1.2rem;
+}
+
+.md-typeset summary
+{
+    font-style: italic;
+    font-weight: normal;
+}
+
+.md-typeset span.n,
+.md-typeset span.p,
+.md-typeset span.bp,
+.md-typeset span.o,
+.md-typeset span.kc
+{
+    font-style: italic;
+}
+
+/*
+.md-typeset h2 {
+    font-size: 1.8em;
+}
+*/

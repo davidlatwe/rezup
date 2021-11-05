@@ -1,24 +1,47 @@
-#
-#site_name: Rezup
-## use_directory_urls: false
-#theme:
-#  name: "material"
-#
-#plugins:
-#- search
-#- mkdocstrings:
-#    default_handler: python
-#    handlers:
-#      python:
-#        rendering:
-#          show_source: true
-#    custom_templates: templates
-#    watch:
-#      - src
-#
-#nav:
-#    - index.md
-#    - 'API Reference':
-#        - 'rezup': 'api/rezup.md'
-#        - 'rezup.cli': 'api/rezup/cli.md'
-#        - 'rezup.util': 'api/rezup/util.md'
+
+site_name: Rezup
+
+theme:
+  name: "material"
+
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+      primary: blue grey
+      accent: cyan
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+      primary: blue grey
+      accent: cyan
+
+  features:
+    - navigation.expand
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+- search
+- mkdocstrings:
+    watch:
+      - src
+    handlers:
+      python:
+        selection:
+          docstring_style: 'google'
+          inherited_members: false
+          filters:
+            - "!^_"  # exclude all members starting with _
+            - "^__init__$"  # but always include __init__ modules and methods
+
+nav:
+    - index.md
+    - Reference:
+      - rezup: 'ref_rezup.md'
+      - rezup.util: 'ref_rezup.util.md'

@@ -16,35 +16,3 @@ write_to_template = """\
 # don't change, don't track in version control
 __version__ = "{version}"
 """
-
-[tool.portray]
-docs_dir = "docs"
-output_dir = "site"
-modules = [
-    "rezup",
-    "rezup.cli",
-    "rezup.util",
-]
-
-[tool.portray.pdoc]
-docformat = "google"
-output_directory = "docs/api"
-template_directory = "pdoc-template"
-
-[tool.portray.mkdocs]
-site_name = "Rezup"
-plugins = [
-    "search",
-]
-
-[tool.portray.mkdocs.theme]
-name = "material"
-
-[[tool.portray.mkdocs.nav]]
-Home = "index.md"
-
-#[[tool.portray.mkdocs.nav]]
-#    [[tool.portray.mkdocs.nav."API-Reference"]]
-#    rezup = "api/rezup.md"
-#    rezup.cli = "api/rezup/cli.md"
-#    rezup.util = "api/rezup/util.md"
