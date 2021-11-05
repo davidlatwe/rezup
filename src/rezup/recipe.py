@@ -122,8 +122,10 @@ class ContainerRecipe(BaseRecipe):
         that could be changed inside this context for the case when you need
         to operate on machines that have no recipe exists in home directory.
 
-        >>> with ContainerRecipe.provisional_recipes("/to/other/recipes"):
-        >>>     ...
+        ```
+        with ContainerRecipe.provisional_recipes("/to/other/recipes"):
+            ...
+        ```
 
         Args:
             path (`str` or path-like): directory path where recipes located

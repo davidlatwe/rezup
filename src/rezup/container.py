@@ -77,8 +77,9 @@ def norm_path(path):
 def iter_containers():
     """Iterate containers by recipes (`~/rezup[.{name}].toml`)
 
-    Yields:
-        `rezup.Container`: Instance of `Container`, could be linked to remote or local.
+    Returns:
+        Generator[rezup.Container]: Instance of [rezup.Container][], could be
+            linked to remote or local.
 
     """
     for recipe in ContainerRecipe.iter_recipes():
@@ -366,6 +367,12 @@ class Container:
 
 
 class Revision:
+    """
+    Args:
+        container (Container): The container that holds this revision
+        dirname (str, optional): Directory name of this revision, should be
+            a timestamp string if given.
+    """
 
     def __init__(self, container, dirname=None):
         dirname = str(dirname or time.time())
