@@ -99,7 +99,7 @@ class ContainerRecipe(BaseRecipe):
         * `~/rezup.test.toml` -> container `test`
 
     Args:
-        name(str): Container name
+        name (str): Container name
 
     """
     REGEX = re.compile("rezup.?(.*).toml")
@@ -126,7 +126,7 @@ class ContainerRecipe(BaseRecipe):
         >>>     ...
 
         Args:
-            path (str or path-like): directory path where recipes located
+            path (`str` or path-like): directory path where recipes located
         """
         default = cls.RECIPES_DIR
         try:
@@ -137,7 +137,10 @@ class ContainerRecipe(BaseRecipe):
 
     @classmethod
     def iter_recipes(cls):
-        """Iter all recipe files found in `ContainerRecipe.RECIPES_DIR`"""
+        """Iter all recipe files found in `ContainerRecipe.RECIPES_DIR`
+        Yields:
+            `ContainerRecipe`
+        """
         for item in cls.RECIPES_DIR.iterdir():
             if not item.is_file():
                 continue
@@ -149,7 +152,7 @@ class ContainerRecipe(BaseRecipe):
     def path(self):
         """Returns the file path of this recipe
         Returns:
-            pathlib.Path
+            `pathlib.Path`
         """
         if self._path is None:
             self._path = self.RECIPES_DIR / self._file
@@ -158,7 +161,9 @@ class ContainerRecipe(BaseRecipe):
     def create(self, data=None):
         """Write out recipe content into a .toml file
         Args:
-            data(dict, optional): Arbitrary data to write out
+            data (`dict`, optional): Arbitrary data to write out
+        Returns:
+            `None`
         """
         if not self.RECIPES_DIR.is_dir():
             self.RECIPES_DIR.mkdir(parents=True)

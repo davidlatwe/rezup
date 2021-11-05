@@ -15,7 +15,6 @@ import virtualenv
 from datetime import datetime
 from dotenv import dotenv_values
 from distlib.scripts import ScriptMaker
-from typing import Generator
 
 try:
     from dotenv.compat import StringIO  # py2
@@ -79,7 +78,7 @@ def iter_containers():
     """Iterate containers by recipes (`~/rezup[.{name}].toml`)
 
     Yields:
-        Container: Instance of `Container`, could be linked to remote or local.
+        `rezup.Container`: Instance of `Container`, could be linked to remote or local.
 
     """
     for recipe in ContainerRecipe.iter_recipes():
@@ -108,11 +107,11 @@ def get_container_root(recipe, remote=False):
     will set to `/path/to/remote/containers`.
 
     Args:
-        recipe (rezup.ContainerRecipe): The container recipe to lookup from.
+        recipe (`ContainerRecipe`): The container recipe to lookup from.
         remote (bool): Fetch remote root if True, otherwise local.
 
     Returns:
-        pathlib.Path: Container root path, local or remote one.
+        `pathlib.Path`: Container root path, local or remote one.
 
     """
     data = recipe.data()
@@ -152,13 +151,12 @@ class Container:
     venv will be created locally or re-used if same revision exists in local.
 
     Args:
-        name (str, optional): Container name, use `Container.DEFAULT_NAME`
+        name (`str`, optional): Container name, use `Container.DEFAULT_NAME`
             if not given.
-        recipe (rezup.recipe.ContainerRecipe, optional): A
-            `rezup.recipe.ContainerRecipe` object to help constructing
-            container, will look into `rezup.recipe.ContainerRecipe.RECIPES_DIR`
+        recipe (`ContainerRecipe`, optional): A `ContainerRecipe` object to
+            help constructing container, will look into `ContainerRecipe.RECIPES_DIR`
             if not given.
-        force_local (bool, optional): Default `False`. Ignore linking remote
+        force_local (`bool`, optional): Default `False`. Ignore linking remote
             even if the remote path has set, always link to local if `True`.
 
     """
@@ -198,7 +196,7 @@ class Container:
             force_local (bool): Create as local if True, or try remote.
 
         Returns:
-            Container: A container instance.
+            `Container`: A container instance.
         """
         recipe = ContainerRecipe(name)
         _log.debug("Sourcing recipe from: %s" % recipe)
@@ -210,7 +208,7 @@ class Container:
     def root(self):
         """
         Returns:
-            pathlib.Path: Path to where this container is located.
+            `pathlib.Path`: Path to where this container is located.
         """
         return self._root
 
@@ -224,28 +222,28 @@ class Container:
     def path(self):
         """
         Returns:
-            pathlib.Path: Full path of this container.
+            `pathlib.Path`: Full path of this container.
         """
         return self._path
 
     def recipe(self):
         """
         Returns:
-            ContainerRecipe: The recipe instance that binds to this container.
+            `ContainerRecipe`: The recipe instance that binds to this container.
         """
         return self._recipe
 
     def libs(self):
         """
         Returns:
-            pathlib.Path: Path to this container's shared libraries.
+            `pathlib.Path`: Path to this container's shared libraries.
         """
         return self._path / "libs"
 
     def revisions(self):
         """
         Returns:
-            pathlib.Path: Path to this container's revisions.
+            `pathlib.Path`: Path to this container's revisions.
         """
         return self._path / "revisions"
 

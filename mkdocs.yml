@@ -1,20 +1,24 @@
-
-site_name: Rezup
-
-theme:
-  name: "material"
-
-plugins:
-- search
-- mkdocstrings:
-    default_handler: python
-    handlers:
-      python:
-        rendering:
-          show_source: false
-    custom_templates: templates
-    watch:
-      - src/rezup
-
-nav:
-    - Home: Reference.md
+#
+#site_name: Rezup
+## use_directory_urls: false
+#theme:
+#  name: "material"
+#
+#plugins:
+#- search
+#- mkdocstrings:
+#    default_handler: python
+#    handlers:
+#      python:
+#        rendering:
+#          show_source: true
+#    custom_templates: templates
+#    watch:
+#      - src
+#
+#nav:
+#    - index.md
+#    - 'API Reference':
+#        - 'rezup': 'api/rezup.md'
+#        - 'rezup.cli': 'api/rezup/cli.md'
+#        - 'rezup.util': 'api/rezup/util.md'
