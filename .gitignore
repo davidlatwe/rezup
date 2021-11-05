@@ -133,3 +133,6 @@ dmypy.json
 
 # versioning by setuptools_scm, see pyproject.toml
 src/rezup/_version.py
+
+# pdoc
+docs/api/
