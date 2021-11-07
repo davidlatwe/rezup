@@ -1,5 +1,8 @@
 
-site_name: Rezup
+site_name: rezup
+site_url: https://davidlatwe.github.io/rezup/
+repo_url: https://github.com/davidlatwe/rezup/
+repo_name: GitHub
 
 theme:
   name: "material"
@@ -10,21 +13,26 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to dark mode
-      primary: blue grey
-      accent: cyan
+      primary: cyan
+      accent: indigo
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       toggle:
         icon: material/weather-night
         name: Switch to light mode
-      primary: blue grey
-      accent: cyan
+      primary: cyan
+      accent: indigo
 
   features:
     - navigation.expand
 
 extra_css:
   - stylesheets/extra.css
+
+markdown_extensions:
+- pymdownx.details
+- pymdownx.snippets:
+    check_paths: true
 
 plugins:
 - search
@@ -33,6 +41,9 @@ plugins:
       - src
     handlers:
       python:
+        setup_commands:
+          - import sys
+          - sys.path.insert(0, "src")
         selection:
           docstring_style: 'google'
           inherited_members: false
@@ -41,7 +52,10 @@ plugins:
             - "^__init__$"  # but always include __init__ modules and methods
 
 nav:
-    - index.md
+    - Home:
+      - Overview: index.md
+      - Usage
+      - License : license.md
     - Reference:
       - rezup: 'ref_rezup.md'
       - rezup.util: 'ref_rezup.util.md'

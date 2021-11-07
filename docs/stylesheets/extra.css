@@ -1,20 +1,31 @@
 
+/* Add indent
+*/
 .md-typeset p,
 .md-typeset__scrollwrap,
-.md-typeset details,
-.md-typeset details.quote,
-.md-typeset summary:before
+.md-typeset pre,
+.md-typeset details
 {
-    padding-left: 1.2rem;
-    border-left: 1.2rem;
+    margin-left: 1.2rem;
 }
 
+/* For source code summary
+*/
 .md-typeset summary
 {
     font-style: italic;
     font-weight: normal;
 }
 
+/* Add space between source code code-block and next function doc
+*/
+.md-typeset details
+{
+    margin-bottom: 3.2rem;
+}
+
+/* Italic function name and signatures
+*/
 .md-typeset span.n,
 .md-typeset span.p,
 .md-typeset span.bp,

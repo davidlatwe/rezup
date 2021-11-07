@@ -9,8 +9,6 @@ from .container import Container, Revision, iter_containers
 from .recipe import ContainerRecipe
 from .exceptions import ContainerError
 
-# __docformat__ = "google"
-
 
 def get_rezup_version():
     # type: () -> str
