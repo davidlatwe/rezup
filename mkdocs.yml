@@ -6,7 +6,6 @@ repo_name: GitHub
 
 theme:
   name: "material"
-
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -31,39 +30,40 @@ extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
-- pymdownx.tabbed
-- pymdownx.details
-- pymdownx.snippets:
-    check_paths: true
-- pymdownx.highlight
-- pymdownx.superfences
+  - admonition
+  - pymdownx.tabbed
+  - pymdownx.details
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.highlight
+  - pymdownx.superfences
 
 plugins:
-- search
-- mkdocstrings:
-    watch:
-      - src
-    handlers:
-      python:
-        setup_commands:
-          - import sys
-          - sys.path.insert(0, "src")
-        selection:
-          docstring_style: 'google'
-          inherited_members: false
-          filters:
-            - "!^_"  # exclude all members starting with _
-            - "^__init__$"  # but always include __init__ modules and methods
+  - search
+  - mkdocstrings:
+      watch:
+        - src
+      handlers:
+        python:
+          setup_commands:
+            - import sys
+            - sys.path.insert(0, "src")
+          selection:
+            docstring_style: 'google'
+            inherited_members: false
+            filters:
+              - "!^_"  # exclude all members starting with _
+              - "^__init__$"  # but always include __init__ modules and methods
 
 nav:
-    - Home:
-      - Overview: index.md
-      - License: license.md
-    - Usage:
-      - Recipe: recipe.md
-      - Command: command.md
-      - Scripts: scripts.md
-      - Environ: environ.md
-    - Reference:
-      - rezup: rezup.md
-      - rezup.util: rezup.util.md
+  - Home:
+    - Overview: index.md
+  - Usage:
+    - Recipe: recipe.md
+    - Command: command.md
+    - Scripts: scripts.md
+    - Environ: environ.md
+  - Reference:
+    - rezup: rezup.md
+    - rezup.util: rezup.util.md
+  - License: license.md

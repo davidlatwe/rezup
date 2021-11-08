@@ -50,4 +50,4 @@ To know more, please run `rezup --help` or `rezup [COMMAND] --help` for each com
 $ rezup --help
 ```
 
-Or, [Read The Docs]("")
+Or, [Read The Docs]("https://davidlatwe.github.io/rezup/")

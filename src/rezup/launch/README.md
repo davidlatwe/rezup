@@ -1,7 +1,9 @@
 
 ## Shell Prompt
 
-You may customize the prompt with environ var `REZUP_PROMPT`, to get the container name for custom prompt, use env var `REZUP_CONTAINER`.
+You may customize the prompt with environ var `REZUP_PROMPT`.
+
+To get the container name for custom prompt, use env var `REZUP_CONTAINER`. You may also want to use `REZUP_USING_REMOTE` to indicate whether current rez venv session is sourced from local or remote container. 
 
 
 ## Set Prompts in Unix Shell
@@ -43,7 +45,7 @@ $ csh
 % ('bash', '/bin/bash')
 ```
 
-https://unix.stackexchange.com/q/45458
+[Why $SHELL doesn't change when I run new shell?](https://unix.stackexchange.com/q/45458)
 
 To overcome this, use env `REZUP_DEFAULT_SHELL` to set the shell you want.
 
