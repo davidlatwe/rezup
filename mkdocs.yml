@@ -24,15 +24,19 @@ theme:
       accent: indigo
 
   features:
-    - navigation.expand
+    - navigation.top
+    - navigation.sections
 
 extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
+- pymdownx.tabbed
 - pymdownx.details
 - pymdownx.snippets:
     check_paths: true
+- pymdownx.highlight
+- pymdownx.superfences
 
 plugins:
 - search
@@ -54,8 +58,12 @@ plugins:
 nav:
     - Home:
       - Overview: index.md
-      - Usage
-      - License : license.md
+      - License: license.md
+    - Usage:
+      - Recipe: recipe.md
+      - Command: command.md
+      - Scripts: scripts.md
+      - Environ: environ.md
     - Reference:
-      - rezup: 'ref_rezup.md'
-      - rezup.util: 'ref_rezup.util.md'
+      - rezup: rezup.md
+      - rezup.util: rezup.util.md
