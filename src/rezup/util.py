@@ -5,7 +5,6 @@ import sys
 import json
 import logging
 import subprocess
-from typing import Union
 
 try:
     from pathlib import Path  # noqa, py3
@@ -19,7 +18,6 @@ _log = logging.getLogger("rezup.util")
 
 
 def resolve_environ(revision, requests_or_rxt):
-    # type: (Revision, Union[list, str, Path]) -> dict
     """Resolve package requests with Rez from container
 
     Open a subprocess and call rez-python that is located from container to
@@ -85,7 +83,6 @@ def resolve_environ(revision, requests_or_rxt):
 
 
 def get_revision(container=None, create=False, fallback=True):
-    # type: (str, bool, bool) -> Revision
     """Returns a revision instance from container
 
     Args:
@@ -95,7 +92,7 @@ def get_revision(container=None, create=False, fallback=True):
             found in local.
 
     Returns:
-        An instance of Revision
+        Revision: An instance of Revision
 
     Raises:
         ContainerError
