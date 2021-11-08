@@ -1,0 +1,47 @@
+
+/* Add indent
+*/
+.md-typeset p,
+.md-typeset__scrollwrap,
+.md-typeset pre,
+.md-typeset details
+{
+    margin-left: 1.2rem;
+}
+
+/* For source code summary
+*/
+.md-typeset summary
+{
+    font-style: italic;
+    font-weight: normal;
+}
+
+/* Add space between source code code-block and next function doc
+*/
+.md-typeset details
+{
+    margin-bottom: 3.2rem;
+}
+
+/* Italic function name and signatures
+*/
+.md-typeset span.n,
+.md-typeset span.p,
+.md-typeset span.bp,
+.md-typeset span.o,
+.md-typeset span.kc
+{
+    font-style: italic;
+}
+
+/*
+.md-typeset h2 {
+    font-size: 1.8em;
+}
+*/
+
+.md-nav
+{
+    padding-left: 0.4rem;
+}

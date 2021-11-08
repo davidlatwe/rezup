@@ -5,7 +5,13 @@ import sys
 import json
 import logging
 import subprocess
-from . import Container, ContainerError
+
+try:
+    from pathlib import Path  # noqa, py3
+except ImportError:
+    from pathlib2 import Path  # noqa, py2
+
+from . import Revision, Container, ContainerError
 
 
 _log = logging.getLogger("rezup.util")
@@ -82,10 +88,11 @@ def get_revision(container=None, create=False, fallback=True):
     Args:
         container: Container name, use default container if name not given.
         create: Create local revision if not exists, default False.
-        fallback:
+        fallback: If True, accept earlier revision when no timestamp matched
+            found in local.
 
     Returns:
-        Revision
+        Revision: An instance of Revision
 
     Raises:
         ContainerError

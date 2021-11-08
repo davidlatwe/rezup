@@ -17,8 +17,8 @@ else:
 from ._vendor import toml
 
 
-DEFAULT_CONTAINER_NAME = ".main"
-DEFAULT_CONTAINER_RECIPES = Path.home()
+DEFAULT_CONTAINER_NAME = ".main"  #: default container name: `.main`
+DEFAULT_CONTAINER_RECIPES = Path.home()  #: user home directory
 
 
 class BaseRecipe(DictMixin, object):
@@ -99,11 +99,11 @@ class ContainerRecipe(BaseRecipe):
         * `~/rezup.test.toml` -> container `test`
 
     Args:
-        name(str): Container name
+        name (str): Container name
 
     """
     REGEX = re.compile("rezup.?(.*).toml")
-    RECIPES_DIR = DEFAULT_CONTAINER_RECIPES
+    RECIPES_DIR = DEFAULT_CONTAINER_RECIPES  #: `DEFAULT_CONTAINER_RECIPES`
 
     def __init__(self, name=None):
         super(ContainerRecipe, self).__init__(name)
@@ -122,11 +122,13 @@ class ContainerRecipe(BaseRecipe):
         that could be changed inside this context for the case when you need
         to operate on machines that have no recipe exists in home directory.
 
-        >>> with ContainerRecipe.provisional_recipes("/to/other/recipes"):
-        >>>     ...
+        ```
+        with ContainerRecipe.provisional_recipes("/to/other/recipes"):
+            ...
+        ```
 
         Args:
-            path (str or path-like): directory path where recipes located
+            path (`str` or path-like): directory path where recipes located
         """
         default = cls.RECIPES_DIR
         try:
@@ -137,7 +139,10 @@ class ContainerRecipe(BaseRecipe):
 
     @classmethod
     def iter_recipes(cls):
-        """Iter all recipe files found in `ContainerRecipe.RECIPES_DIR`"""
+        """Iter all recipe files found in `ContainerRecipe.RECIPES_DIR`
+        Yields:
+            `ContainerRecipe`
+        """
         for item in cls.RECIPES_DIR.iterdir():
             if not item.is_file():
                 continue
@@ -149,7 +154,7 @@ class ContainerRecipe(BaseRecipe):
     def path(self):
         """Returns the file path of this recipe
         Returns:
-            pathlib.Path
+            `pathlib.Path`
         """
         if self._path is None:
             self._path = self.RECIPES_DIR / self._file
@@ -158,7 +163,9 @@ class ContainerRecipe(BaseRecipe):
     def create(self, data=None):
         """Write out recipe content into a .toml file
         Args:
-            data(dict, optional): Arbitrary data to write out
+            data (`dict`, optional): Arbitrary data to write out
+        Returns:
+            `None`
         """
         if not self.RECIPES_DIR.is_dir():
             self.RECIPES_DIR.mkdir(parents=True)
