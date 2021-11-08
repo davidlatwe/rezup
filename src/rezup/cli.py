@@ -110,8 +110,10 @@ def cli(ctx):
 
 @cli.command(options_metavar="[NAME] [OPTIONS] [-- commands..]")
 @click.argument("name", nargs=1, default=_default_cname, metavar="")
-@click.option("-l", "--local", is_flag=True)
-@click.option("-n", "--no-wait", is_flag=True)
+@click.option("-l", "--local", is_flag=True,
+              help="Enforce using local container")
+@click.option("-n", "--no-wait", is_flag=True,
+              help="Not waiting '-- {command}' to complete")
 @_cli_debug_option
 @click.help_option("-h", "--help")
 @click.pass_context
@@ -136,19 +138,19 @@ def use(ctx, name, local, no_wait):
         $ rezup use foo --local
 
         \b
-        - use foo and do job (non-interactive session)
-        $ rezup use foo --do {script.bat or "quoted command"}
+        - use foo and run command (non-interactive session)
+        $ rezup use foo -- {command}
 
         \b
-        - not waiting the job process to complete
-        $ rezup use foo --just --do {script.bat or "quoted command"}
+        - not waiting the command process to complete
+        $ rezup use foo --no-wait -- {command}
 
     \f
     Args:
         ctx (click.Context): click's internal context object
         name (str): container name
         local (bool): ignore remote and use local container
-        no_wait (bool): not waiting '-- script/command' to complete
+        no_wait (bool): not waiting '-- {command}' to complete
 
     """
     ctx.obj["wait"] = not no_wait
@@ -183,8 +185,8 @@ def use(ctx, name, local, no_wait):
 
 @cli.command(options_metavar="[NAME] [OPTIONS]")
 @click.argument("name", nargs=1, default=_default_cname, metavar="")
-@click.option("-r", "--remote", is_flag=True)
-@click.option("-s", "--skip-use", is_flag=True)
+@click.option("-r", "--remote", is_flag=True, help="Add as remote container")
+@click.option("-s", "--skip-use", is_flag=True, help="Add container and exit.")
 @_cli_debug_option
 @click.help_option("-h", "--help")
 @click.pass_context
@@ -197,15 +199,15 @@ def add(ctx, name=_default_cname, remote=False, skip_use=False):
     Examples:
 
         \b
-        - create & use new rev from container '.main' (with ~/rezup.toml)
+        - create & use new rev for local container '.main' (with ~/rezup.toml)
         $ rezup add
 
         \b
-        - create & use new rev from container 'foo' (with ~/rezup.foo.toml)
+        - create & use new rev for local container 'foo' (with ~/rezup.foo.toml)
         $ rezup add foo
 
         \b
-        - create new rev from remote container
+        - create new rev for remote container
         $ rezup add --remote --skip-use
 
     \f
