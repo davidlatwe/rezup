@@ -6,8 +6,6 @@ on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -28,4 +26,4 @@ jobs:
         # uses: mhausenblas/mkdocs-deploy-gh-pages@786c1c8c1c5ab4ceda14f1579cf417cbd6288825
         uses: mhausenblas/mkdocs-deploy-gh-pages@1.24
         env:
-          EXTRA_PACKAGES: mkdocstrings
+          REQUIREMENTS: docs/requirements.txt
