@@ -27,3 +27,5 @@ jobs:
         # You may pin to the exact commit or the version.
         # uses: mhausenblas/mkdocs-deploy-gh-pages@786c1c8c1c5ab4ceda14f1579cf417cbd6288825
         uses: mhausenblas/mkdocs-deploy-gh-pages@1.24
+        env:
+          EXTRA_PACKAGES: mkdocstrings
