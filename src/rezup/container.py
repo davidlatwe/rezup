@@ -739,6 +739,7 @@ class Tool:
         self.edit = data.get("edit", False)
         self.isolation = data.get("isolation", False)
         self.python = data.get("python", None)
+        self.flags = data.get("flags", ["-E"])
 
     def __repr__(self):
         return "%s(name=%s, edit=%d, url=%s, isolation=%d, python=%s)" % (
@@ -902,7 +903,7 @@ class Installer:
 
         scripts = maker.make_multiple(
             specifications=specifications.values(),
-            options=dict(interpreter_args=["-E"])
+            options=dict(interpreter_args=list(tool.flags))
         )
 
         return scripts
