@@ -3,7 +3,6 @@ site_name: rezup
 site_url: https://davidlatwe.github.io/rezup/
 repo_url: https://github.com/davidlatwe/rezup/
 repo_name: GitHub
-strict: false
 
 theme:
   name: "material"
