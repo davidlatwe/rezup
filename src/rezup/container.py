@@ -977,6 +977,13 @@ class Installer:
 
         if tool.edit:
             egg_link = site_packages / ("%s.egg-link" % tool.name)
+            if not egg_link.is_file():
+                _log.error("Tool %r installed in edit mode, but unable "
+                           "to find egg-link for generating production "
+                           "scripts from source. File not exists: %s" %
+                           (tool.name, egg_link))
+                return
+
             with open(str(egg_link), "r") as f:
                 package_location = f.readline().strip()
             path = [str(package_location)]
