@@ -222,3 +222,6 @@ requires = [
 For faster deploy, dependency packages can be installed in here, and will be shared across all revisions in one container (all revisions that use same `name` of shared lib).
 
 This works by creating a `.pth` file that contains the absolute path of shared lib in Rez venv and only that venv. So this will not be shared with the extension that has `isolation` set to true.
+
+
+## Production Install

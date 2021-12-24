@@ -9,4 +9,5 @@
 |REZUP_PROMPT|For customizing shell prompt, optional. See [Command](../command#shell-prompt).|
 |REZUP_CONTAINER|Auto set, for customizing shell prompt. See [Command](../command#shell-prompt).|
 |REZUP_USING_REMOTE|Auto set, indicating where the container was sourced from.|
+|REZUP_EDIT_IN_PRODUCTION|Enable production privilege for Rez that was installed in edit mode.|
 |REZUP_TEST_KEEP_TMP|Preserve temp dirs in tests.|
