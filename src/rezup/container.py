@@ -956,13 +956,6 @@ class Installer:
             f.write(rez_version)
         self._rez_version = rez_version
 
-        if tool.edit:
-            egg_info = os.path.join(tool.url, "src", "rez.egg-info")
-            egg_link = os.path.join(egg_info, ".rez_production_entry")
-            if os.path.isdir(egg_info):
-                with open(egg_link, "w") as f:
-                    f.write(str(rez_bin))
-
     def create_production_scripts(self, tool, venv_session):
         """Create Rez production used binary scripts
 
@@ -1026,6 +1019,11 @@ class Installer:
         # See https://bitbucket.org/pypa/distlib/issue/32/
         maker.set_mode = True
 
+        if tool.edit:
+            maker.script_template = _EDIT_MODE_SCRIPT_TEMPLATE.format(
+                rez_bin_path=str(prod_bin_path),
+            )
+
         scripts = maker.make_multiple(
             specifications=specifications.values(),
             options=dict(interpreter_args=list(tool.flags))
@@ -1056,3 +1054,21 @@ class Installer:
         site_packages = venv_session.creator.purelib
         with open(str(site_packages / "_rezup_shared.pth"), "w") as f:
             f.write(lib_path)
+
+
+_EDIT_MODE_SCRIPT_TEMPLATE = r'''# -*- coding: utf-8 -*-
+import re
+import os
+import sys
+from %(module)s import %(import_name)s
+if os.getenv("REZUP_EDIT_IN_PRODUCTION"):
+    try:
+        from rez.system import system
+    except ImportError:
+        pass
+    else:
+        setattr(system, 'rez_bin_path', r'{rez_bin_path}')
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(%(func)s())
+'''
