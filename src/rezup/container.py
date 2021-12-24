@@ -878,6 +878,7 @@ class Installer:
         self._default_venv = None
         self._rez_as_libs = None
         self._rez_version = None
+        self._rez_in_edit = None
 
     def installed_rez_version(self):
         return self._rez_version
@@ -888,6 +889,7 @@ class Installer:
         venv_session = self.create_venv(tool)
         self._default_venv = venv_session
         self._rez_as_libs = tool
+        self._rez_in_edit = tool.edit
 
         self.install_package(tool, venv_session, patch_scripts=True)
 
@@ -1019,10 +1021,22 @@ class Installer:
         # See https://bitbucket.org/pypa/distlib/issue/32/
         maker.set_mode = True
 
-        if tool.edit:
-            maker.script_template = _EDIT_MODE_SCRIPT_TEMPLATE.format(
-                rez_bin_path=str(prod_bin_path),
-            )
+        if self._rez_in_edit:
+            # Allow pre-caching rez_bin_path on script entry if environ var
+            # `REZUP_EDIT_IN_PRODUCTION` is set with non-empty value.
+            # See https://github.com/davidlatwe/rezup/pull/56
+            maker.script_template = r'''# -*- coding: utf-8 -*-
+import re
+import os
+import sys
+from %(module)s import %(import_name)s
+if os.getenv("REZUP_EDIT_IN_PRODUCTION"):
+    from rez.system import system
+    setattr(system, 'rez_bin_path', r'{rez_bin_path}')
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(%(func)s())
+'''.format(rez_bin_path=str(prod_bin_path))
 
         scripts = maker.make_multiple(
             specifications=specifications.values(),
@@ -1054,21 +1068,3 @@ class Installer:
         site_packages = venv_session.creator.purelib
         with open(str(site_packages / "_rezup_shared.pth"), "w") as f:
             f.write(lib_path)
-
-
-_EDIT_MODE_SCRIPT_TEMPLATE = r'''# -*- coding: utf-8 -*-
-import re
-import os
-import sys
-from %(module)s import %(import_name)s
-if os.getenv("REZUP_EDIT_IN_PRODUCTION"):
-    try:
-        from rez.system import system
-    except ImportError:
-        pass
-    else:
-        setattr(system, 'rez_bin_path', r'{rez_bin_path}')
-if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(%(func)s())
-'''
