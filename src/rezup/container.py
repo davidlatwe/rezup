@@ -878,6 +878,7 @@ class Installer:
         self._default_venv = None
         self._rez_as_libs = None
         self._rez_version = None
+        self._rez_in_edit = None
 
     def installed_rez_version(self):
         return self._rez_version
@@ -888,6 +889,7 @@ class Installer:
         venv_session = self.create_venv(tool)
         self._default_venv = venv_session
         self._rez_as_libs = tool
+        self._rez_in_edit = tool.edit
 
         self.install_package(tool, venv_session, patch_scripts=True)
 
@@ -956,13 +958,6 @@ class Installer:
             f.write(rez_version)
         self._rez_version = rez_version
 
-        if tool.edit:
-            egg_info = os.path.join(tool.url, "src", "rez.egg-info")
-            egg_link = os.path.join(egg_info, ".rez_production_entry")
-            if os.path.isdir(egg_info):
-                with open(egg_link, "w") as f:
-                    f.write(str(rez_bin))
-
     def create_production_scripts(self, tool, venv_session):
         """Create Rez production used binary scripts
 
@@ -1025,6 +1020,23 @@ class Installer:
         # not executable.
         # See https://bitbucket.org/pypa/distlib/issue/32/
         maker.set_mode = True
+
+        if self._rez_in_edit:
+            # Allow pre-caching rez_bin_path on script entry if environ var
+            # `REZUP_EDIT_IN_PRODUCTION` is set with non-empty value.
+            # See https://github.com/davidlatwe/rezup/pull/56
+            maker.script_template = r'''# -*- coding: utf-8 -*-
+import re
+import os
+import sys
+from %(module)s import %(import_name)s
+if os.getenv("REZUP_EDIT_IN_PRODUCTION"):
+    from rez.system import system
+    setattr(system, 'rez_bin_path', r'{rez_bin_path}')
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(%(func)s())
+'''.format(rez_bin_path=str(prod_bin_path))
 
         scripts = maker.make_multiple(
             specifications=specifications.values(),
