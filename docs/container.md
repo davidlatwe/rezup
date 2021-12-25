@@ -237,3 +237,15 @@ See Rez Wiki [Why Not Pip For Production?](https://github.com/nerdvegas/rez/wiki
 But if Rez gets installed in *edit-mode*, it will fail to compute the location of those production-installed bin tools and not able to provide features like nesting resolved contexts or running some specific rez tests.
 
 Rezup covers this situation by using custom entry-point script. If Rez is going to be installed in edit-mode, all bin tools will be generated with the custom script, which will pre-cache the location of bin tools when the session starts if, the environment variable `REZUP_EDIT_IN_PRODUCTION` exists and is not empty (see [davidlatwe/rezup#56](https://github.com/davidlatwe/rezup/pull/56) for implementation detail).
+
+You may put that env var in e.g. `rezup.dev.toml` like this:
+
+```toml
+[env]
+REZUP_EDIT_IN_PRODUCTION = "1"
+
+[rez]
+name = "rez"
+url = "/path/to/source/rez"
+edit = true
+```
