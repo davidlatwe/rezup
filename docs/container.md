@@ -225,3 +225,15 @@ This works by creating a `.pth` file that contains the absolute path of shared l
 
 
 ## Production Install
+
+Rezup installs Rez and the tooling by following Rez installation script's "production-install" schema :
+
+1. Install Rez in a fresh Python virtual environment.
+2. Command line entry-points (bin tools) are all patched with Python interpreter flag `-E`.
+3. All bin tools get stored in a sub-directory of regular Python bin tools install location (`{venv}/bin/rez` or `{venv}/Scripts/rez` on Windows).
+
+See Rez Wiki [Why Not Pip For Production?](https://github.com/nerdvegas/rez/wiki/Installation#why-not-pip-for-production) section for a bit more detail.
+
+But if Rez gets installed in *edit-mode*, it will fail to compute the location of those production-installed bin tools and not able to provide features like nesting resolved contexts or running some specific rez tests.
+
+Rezup covers this situation by using custom entry-point script. If Rez is going to be installed in edit-mode, all bin tools will be generated with the custom script, which will pre-cache the location of bin tools when the session starts if, the environment variable `REZUP_EDIT_IN_PRODUCTION` exists and is not empty.
