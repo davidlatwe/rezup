@@ -470,9 +470,16 @@ class Revision:
         """
         _log.debug("Installing..")
 
+        pip_entry = self._recipe.get("pip")
         extensions = extensions or []
-        installer = Installer(self)
+        installer = Installer(
+            self,
+            pip_opt=pip_entry.get("options"),
+            pip_env=pip_entry.get("env"),
+        )
+
         installer.install_rez(rez_)
+
         if shared_lib:
             installer.create_shared_lib(name=shared_lib["name"],
                                         requires=shared_lib["requires"])
@@ -872,9 +879,11 @@ class Tool:
 
 class Installer:
 
-    def __init__(self, revision):
+    def __init__(self, revision, pip_opt=None, pip_env=None):
         self._container = revision.container()
         self._revision = revision
+        self._pip_opt = pip_opt or []
+        self._pip_env = pip_env or dict()
         self._default_venv = None
         self._rez_as_libs = None
         self._rez_version = None
@@ -932,13 +941,14 @@ class Installer:
         else:
             cmd.append(tool.url)
 
-        cmd += [
-            # don't make noise
-            "--disable-pip-version-check",
-        ]
+        cmd += self._pip_opt
+
+        env = os.environ.copy()
+        env.update(self._pip_env)
 
         _log.info("Installing %s.." % tool)
-        subprocess.check_output(cmd)
+        _log.debug("  full command: %s" % " ".join(cmd))
+        subprocess.check_output(cmd, env=env)
 
         if patch_scripts:
             self.create_production_scripts(tool, venv_session)
@@ -1055,14 +1065,17 @@ if __name__ == '__main__':
         cmd = [python_exec, "-m", "pip", "install", "-U"]
 
         cmd += requires
+        cmd += self._pip_opt
         cmd += [
-            # don't make noise
-            "--disable-pip-version-check",
             "--target",
             lib_path,
         ]
 
-        subprocess.check_output(cmd)
+        env = os.environ.copy()
+        env.update(self._pip_env)
+
+        _log.debug("  full command: %s" % " ".join(cmd))
+        subprocess.check_output(cmd, env=env)
 
         # link shared lib with rez venv (the default venv)
         site_packages = venv_session.creator.purelib

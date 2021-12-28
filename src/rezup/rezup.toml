@@ -16,6 +16,13 @@ remote = false
 
 [env]
 
+[pip]
+options = [
+    "--disable-pip-version-check",
+]
+[pip.env]
+
+
 [rez]
 name = "rez"
 url = "rez>=2.83"

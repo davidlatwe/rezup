@@ -85,6 +85,12 @@ remote = false
 REZ_CONFIG_FILE = "/path/to/rezconfig.py"
 MY_CUSTOMS_ENV = "my value"
 
+[pip]
+options = [
+    "--disable-pip-version-check",
+]
+[pip.env]
+
 [rez]
 name = "rez"
 url = "rez>=2.83"   # a PyPi version specifier or repository path
@@ -162,6 +168,27 @@ These will be loaded when container revision is being used, if provided.
 ```toml
 [env]
 REZ_CONFIG_FILE = "/path/to/rezconfig.py"
+```
+
+
+#### pip
+
+Additional pip command options and environment variables to use when `pip install`-ing packages.
+
+```toml
+[pip]
+options = [
+    "-qq",
+    "--retries=2", 
+    "--timeout=5",
+    "--no-input",
+    "--disable-pip-version-check",
+    "--proxy=https://user_name:password@proxyname:port",
+]
+[pip.env]
+HTTP_PROXY = "http://proxyname:port"
+HTTPS_PROXY = "http://proxyname:port"
+
 ```
 
 
