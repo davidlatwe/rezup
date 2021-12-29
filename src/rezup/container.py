@@ -405,6 +405,7 @@ class Revision:
 
     @classmethod
     def compose_path(cls, container, dirname=None):
+        # type: (Container, Path) -> Path
         path = container.revisions()
         if dirname:
             path /= dirname
@@ -423,9 +424,18 @@ class Revision:
             pulling (Revision, optional): If given, pulling recipe from that
                 revision, usually a remote one.
         """
-        _log.info("Creating revision..")
-
         recipe = self._recipe
+
+        if self.is_ready():
+            raise Exception(
+                "Revision already exists and ready for use: %s" % self._path
+            )
+
+        if self._path.is_dir():
+            _log.info("Cleaning bad revision..")  # possibly pulled from remote
+            rmtree(self._path)
+
+        _log.info("Creating new revision..")
         makedirs(self._path)
 
         # write revision recipe
