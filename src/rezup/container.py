@@ -488,6 +488,11 @@ class Revision:
             pip_env=pip_entry.get("env"),
         )
 
+        # todo:
+        #  1. handling pip error
+        #  2. when pulling from remote and failed to create revision, check
+        #     if local recipe (same container) exists and prompt hint if newer.
+
         installer.install_rez(rez_)
 
         if shared_lib:
