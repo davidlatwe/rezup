@@ -583,8 +583,11 @@ class Revision:
         recipe_env = recipe.get("env")
         if recipe_env:
             stream = StringIO()
-            parsed_recipe_env = ConfigParser(recipe_env)
-            parsed_recipe_env.write(stream)
+
+            _parser = ConfigParser()
+            _parser.optionxform = str  # to prevent turning keys into lowercase
+            _parser.read_dict({"env": recipe_env})
+            _parser.write(stream)
 
             stream.seek(0)  # must reset buffer
             env.update(load_env(stream=stream))
