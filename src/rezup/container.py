@@ -483,8 +483,9 @@ class Revision:
 
         if shared_lib:
             warnings.warn("Shared-lib section is about to be deprecated, "
-                          "use 'rez.lib' instead. See https://github.com/"
-                          "davidlatwe/rezup/issues/62", DeprecationWarning)
+                          "use 'rez.lib' or 'extension.lib' section instead. "
+                          "See https://github.com/davidlatwe/rezup/issues/62",
+                          DeprecationWarning)
             installer.create_shared_lib(name=shared_lib["name"],
                                         requires=shared_lib["requires"])
 
