@@ -970,7 +970,7 @@ class Installer:
                 self.mark_as_rez_production_install(tool, venv_session)
                 # TODO: copy completion scripts
 
-        if tool.lib and (tool.name == "rez" or tool.isolation):
+        if tool.lib:
             cmd = [python_exec, "-m", "pip", "install"]
             cmd += tool.lib
             cmd += self._pip_opt
