@@ -873,6 +873,7 @@ class Tool:
         self.isolation = data.get("isolation", False)
         self.python = data.get("python", None)
         self.flags = data.get("flags", ["-E"])
+        self.lib = data.get("lib", None)
 
     def __repr__(self):
         return "%s(name=%s, edit=%d, url=%s, isolation=%d, python=%s)" % (
@@ -968,6 +969,14 @@ class Installer:
             if tool.name == "rez":
                 self.mark_as_rez_production_install(tool, venv_session)
                 # TODO: copy completion scripts
+
+        if tool.lib and (tool.name == "rez" or tool.isolation):
+            cmd = [python_exec, "-m", "pip", "install"]
+            cmd += tool.lib
+            cmd += self._pip_opt
+            _log.info("Installing lib for %r.." % tool.name)
+            _log.debug("  full command: %s" % " ".join(cmd))
+            subprocess.check_output(cmd, env=env)
 
     def mark_as_rez_production_install(self, tool, venv_session):
         _log.info("Mark as Rez production install..")
