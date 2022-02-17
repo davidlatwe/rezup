@@ -41,7 +41,6 @@ def run():
         obj["job"] = _parse_use_cmd()
 
     # enter
-    _log.setLevel(logging.INFO)
     cli(obj=obj)
 
 
@@ -57,7 +56,8 @@ def _parse_use_cmd():
 def _opt_callback_debug_logging(ctx, param, value):
     if not value or ctx.resilient_parsing:
         return
-    _log.setLevel(logging.DEBUG)
+    stream_handler = next(h for h in _log.handlers if h.name == "stream")
+    stream_handler.setLevel(logging.DEBUG)
 
 
 def _opt_callback_show_latest(ctx, param, value):

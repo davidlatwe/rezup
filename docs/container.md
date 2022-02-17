@@ -76,8 +76,8 @@ A recipe file may look like the following example, see below for details about e
 description = "My rez setup"
 
 [root]
-local = false
-remote = false
+local = ""
+remote = ""
 
 [dotenv]
 
@@ -94,6 +94,11 @@ options = [
 [rez]
 name = "rez"
 url = "rez>=2.83"   # a PyPi version specifier or repository path
+lib = [
+    "pythonfinder",
+    "pyside2",
+    "Qt5.py",
+]
 
 [[extension]]
 name = "foo"
@@ -105,13 +110,11 @@ name = "bar"
 url = "git+git://github.com/get-bar/bar"
 isolation = true    # additional venv will be created just for this package
 python = 2.7        # the python version for the venv of this package
+lib = ["pathlib2"]
 
-[shared]
-name = "production"
-requires = [
-    "pyside2",
-    "Qt5.py",
-]
+[shared]            # about to be deprecated,
+name = "prod"       # use 'rez.lib' or 'extension.lib' section instead
+requires = ["six"]
 
 ```
 
@@ -205,6 +208,11 @@ url = "/path/to/source/rez"
 edit = true
 flags = ["-E"]
 python = 3.7
+lib = [
+    "pythonfinder",
+    "pyside2",
+    "Qt5.py",
+]
 ```
 
 |Name|Required|Description
@@ -214,6 +222,7 @@ python = 3.7
 |edit| - | Just like `pip install -e`, install package in edit mode or not. |
 |python| - | The Python to create venv with. Use current if not set. Could be path to Python executable, or version |
 |flags| - | Python interpreter flags, default `["-E"]` if not set. No flag will be added if the value is an empty list. |
+|lib| - |Additional Python packages to be `pip` installed with.|
 
 
 #### extension
@@ -227,7 +236,8 @@ url = "foo>=0.5"
 edit = false
 flags = ["-E"]
 isolation = true
-python = 3.10      # ignored if `isolation` is false
+python = 2.7       # ignored if `isolation` is false
+lib = ["pathlib2"]
 ```
 
 Just like the section `rez`, but there's an extra option `isolation` can be used. Shouldn't be needed in most cases though.
@@ -236,19 +246,19 @@ If `isolation` is true, a venv will be created just for this extension with Rez 
 
 
 #### shared
-
 ```toml
-[shared]
-name = "production"
-requires = [
-    "pyside2",
-    "Qt5.py",
-]
+[shared]                # about to be deprecated,
+name = "prod"           # use 'rez.lib' or 'extension.lib' section instead
+requires = ["six"]
 ```
 
-For faster deploy, dependency packages can be installed in here, and will be shared across all revisions in one container (all revisions that use same `name` of shared lib).
+=== "To be deprecated"
+    See [davidlatwe/rezup#62](https://github.com/davidlatwe/rezup/issues/62).
 
-This works by creating a `.pth` file that contains the absolute path of shared lib in Rez venv and only that venv. So this will not be shared with the extension that has `isolation` set to true.
+=== "Original description"
+    or faster deploy, dependency packages can be installed in here, and will be shared across all revisions in one container (all revisions that use same `name` of shared lib).
+
+    This works by creating a `.pth` file that contains the absolute path of shared lib in Rez venv and only that venv. So this will not be shared with the extension that has `isolation` set to true.
 
 
 ## Production Install

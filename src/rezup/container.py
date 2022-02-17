@@ -9,6 +9,7 @@ import getpass
 import pkgutil
 import logging
 import platform
+import warnings
 import functools
 import subprocess
 import virtualenv
@@ -97,7 +98,7 @@ def get_container_root(recipe, remote=False):
     ```toml
     # rezup.foo.toml
     [root]
-    local = false
+    local = ""
     remote = "/path/to/remote/containers"
 
     ```
@@ -481,8 +482,13 @@ class Revision:
         installer.install_rez(rez_)
 
         if shared_lib:
+            warnings.warn("Shared-lib section is about to be deprecated, "
+                          "use 'rez.lib' or 'extension.lib' section instead. "
+                          "See https://github.com/davidlatwe/rezup/issues/62",
+                          DeprecationWarning)
             installer.create_shared_lib(name=shared_lib["name"],
                                         requires=shared_lib["requires"])
+
         for ext in extensions:
             installer.install_extension(ext)
 
@@ -868,6 +874,7 @@ class Tool:
         self.isolation = data.get("isolation", False)
         self.python = data.get("python", None)
         self.flags = data.get("flags", ["-E"])
+        self.lib = data.get("lib", None)
 
     def __repr__(self):
         return "%s(name=%s, edit=%d, url=%s, isolation=%d, python=%s)" % (
@@ -933,6 +940,11 @@ class Installer:
         ]
         session = virtualenv.cli_run(args)
 
+        # remove handlers of virtualenv
+        _root = logging.getLogger()
+        for h in _root.handlers:
+            _root.removeHandler(h)
+
         return session
 
     def install_package(self, tool, venv_session, patch_scripts=False):
@@ -958,6 +970,14 @@ class Installer:
             if tool.name == "rez":
                 self.mark_as_rez_production_install(tool, venv_session)
                 # TODO: copy completion scripts
+
+        if tool.lib:
+            cmd = [python_exec, "-m", "pip", "install"]
+            cmd += tool.lib
+            cmd += self._pip_opt
+            _log.info("Installing lib for %r.." % tool.name)
+            _log.debug("  full command: %s" % " ".join(cmd))
+            subprocess.check_output(cmd, env=env)
 
     def mark_as_rez_production_install(self, tool, venv_session):
         _log.info("Mark as Rez production install..")

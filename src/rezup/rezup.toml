@@ -3,8 +3,8 @@ description = "default container revision recipe"
 schema = "rezup-recipe:2.0"
 
 [root]
-local = false
-remote = false
+local = ""
+remote = ""
 
 [dotenv]
 
