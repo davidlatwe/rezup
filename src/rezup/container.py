@@ -9,6 +9,7 @@ import getpass
 import pkgutil
 import logging
 import platform
+import warnings
 import functools
 import subprocess
 import virtualenv
@@ -481,8 +482,12 @@ class Revision:
         installer.install_rez(rez_)
 
         if shared_lib:
+            warnings.warn("Shared-lib section is about to be deprecated, "
+                          "use 'rez.lib' instead. See https://github.com/"
+                          "davidlatwe/rezup/issues/62", DeprecationWarning)
             installer.create_shared_lib(name=shared_lib["name"],
                                         requires=shared_lib["requires"])
+
         for ext in extensions:
             installer.install_extension(ext)
 
@@ -932,6 +937,11 @@ class Installer:
             str(dst)
         ]
         session = virtualenv.cli_run(args)
+
+        # remove handlers of virtualenv
+        _root = logging.getLogger()
+        for h in _root.handlers:
+            _root.removeHandler(h)
 
         return session
 
