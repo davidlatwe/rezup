@@ -76,8 +76,8 @@ A recipe file may look like the following example, see below for details about e
 description = "My rez setup"
 
 [root]
-local = false
-remote = false
+local = ""
+remote = ""
 
 [dotenv]
 

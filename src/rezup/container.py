@@ -98,7 +98,7 @@ def get_container_root(recipe, remote=False):
     ```toml
     # rezup.foo.toml
     [root]
-    local = false
+    local = ""
     remote = "/path/to/remote/containers"
 
     ```
