@@ -61,7 +61,7 @@ def __getattr__(name):
 
     """
     if name[:2] == name[-2:] == "__":
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        raise AttributeError("module %r has no attribute %r" % (__name__, name))
 
     if name == "dot_main":
         con_name = ".main"
