@@ -66,4 +66,5 @@ nav:
   - Reference:
     - rezup: rezup.md
     - rezup.util: rezup.util.md
+    - rezup.util_env: rezup.util_env.md
   - License: license.md
